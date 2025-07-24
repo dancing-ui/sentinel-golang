@@ -35,8 +35,8 @@ const (
 
 type FixedWindowUpdater struct{}
 
-func (u *FixedWindowUpdater) Update(ctx *Context, rules []*MatchedRule) {
-	if len(rules) == 0 {
+func (u *FixedWindowUpdater) Update(ctx *Context, rule *MatchedRule) {
+	if rule == nil {
 		return
 	}
 
@@ -45,9 +45,7 @@ func (u *FixedWindowUpdater) Update(ctx *Context, rules []*MatchedRule) {
 		return
 	}
 
-	for _, rule := range rules {
-		u.updateLimitKey(ctx, rule, usedTokenInfos)
-	}
+	u.updateLimitKey(ctx, rule, usedTokenInfos)
 }
 
 func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *UsedTokenInfos) {

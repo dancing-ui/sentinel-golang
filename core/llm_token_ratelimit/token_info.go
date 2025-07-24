@@ -60,10 +60,6 @@ func extractUsedTokenInfos(ctx *Context) *UsedTokenInfos {
 		return nil
 	}
 
-	if reflect.TypeOf(usedTokenInfosRaw) != usedTokenInfosType {
-		return nil
-	}
-
 	usedTokenInfos, ok := usedTokenInfosRaw.(*UsedTokenInfos)
 	if !ok {
 		return nil

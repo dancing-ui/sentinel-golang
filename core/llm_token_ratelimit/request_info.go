@@ -46,10 +46,6 @@ func extractRequestInfos(ctx *Context) *RequestInfos {
 		return nil
 	}
 
-	if reflect.TypeOf(reqInfosRaw) != requestInfosType {
-		return nil
-	}
-
 	reqInfos, ok := reqInfosRaw.(*RequestInfos)
 	if !ok {
 		return nil

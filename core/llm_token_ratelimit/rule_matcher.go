@@ -21,6 +21,7 @@ import (
 )
 
 type MatchedRule struct {
+	Strategy      Strategy
 	LimitKey      string
 	TimeWindow    int64
 	TokenSize     int64
@@ -40,7 +41,7 @@ type IdentifierChecker interface {
 }
 
 type TokenUpdater interface {
-	Update(ctx *Context, rules []*MatchedRule)
+	Update(ctx *Context, rule *MatchedRule)
 }
 
 var ruleMatcher = NewDefaultRuleMatcher()
@@ -119,25 +120,44 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.checkPass() when get checker", "strategy", rule.Strategy.String())
 		return true
 	}
-	return checker.Check(ctx, rules)
+
+	if passed := checker.Check(ctx, rules); !passed {
+		return false
+	}
+
+	m.cacheMatchedRules(ctx, rules)
+	return true
 }
 
-func (m *RuleMatcher) update(ctx *Context, rule *Rule) {
-	collector := m.getMatchedRuleCollector(rule.Strategy)
-	if collector == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.update() when get collector", "strategy", rule.Strategy.String())
+func (m *RuleMatcher) cacheMatchedRules(ctx *Context, newRules []*MatchedRule) {
+	if len(newRules) == 0 {
 		return
 	}
 
-	rules := collector.Collect(ctx, rule)
-	if len(rules) == 0 {
+	existingValue := ctx.GetContext(KeyMatchedRules)
+	if existingValue == nil {
+		ctx.SetContext(KeyMatchedRules, newRules)
+	} else {
+		existingRules, ok := existingValue.([]*MatchedRule)
+		if !ok {
+			ctx.SetContext(KeyMatchedRules, newRules)
+		} else {
+			allRules := make([]*MatchedRule, 0, len(existingRules)+len(newRules))
+			allRules = append(allRules, existingRules...)
+			allRules = append(allRules, newRules...)
+			ctx.SetContext(KeyMatchedRules, allRules)
+		}
+	}
+}
+
+func (m *RuleMatcher) update(ctx *Context, rule *MatchedRule) {
+	if rule == nil {
 		return
 	}
-
 	updater := m.getTokenUpdater(rule.Strategy)
 	if updater == nil {
 		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.update() when get updater", "strategy", rule.Strategy.String())
 		return
 	}
-	updater.Update(ctx, rules)
+	updater.Update(ctx, rule)
 }

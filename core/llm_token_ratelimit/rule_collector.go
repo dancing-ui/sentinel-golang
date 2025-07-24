@@ -106,6 +106,7 @@ func (c *FixedWindowCollector) addMatchedRule(params *FixedWindowLimitKeyParams,
 	if params.CountStrategy != TotalTokens {
 		limitKey := c.generateLimitKey(params)
 		ruleMap[limitKey] = &MatchedRule{
+			Strategy:      params.Strategy,
 			LimitKey:      limitKey,
 			TimeWindow:    params.TimeWindow,
 			TokenSize:     params.TokenSize,
@@ -115,6 +116,7 @@ func (c *FixedWindowCollector) addMatchedRule(params *FixedWindowLimitKeyParams,
 	params.CountStrategy = TotalTokens
 	limitKey := c.generateLimitKey(params)
 	ruleMap[limitKey] = &MatchedRule{
+		Strategy:      params.Strategy,
 		LimitKey:      limitKey,
 		TimeWindow:    params.TimeWindow,
 		TokenSize:     params.TokenSize,

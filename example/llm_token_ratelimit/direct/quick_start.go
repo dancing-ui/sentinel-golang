@@ -72,6 +72,44 @@ func main() {
 				},
 			},
 		},
+		{
+
+			Resource: "/b/.*",
+			Strategy: llmtokenratelimit.FixedWindow,
+			RuleName: "rule-b",
+			RuleItems: []*llmtokenratelimit.RuleItem{
+				{
+					Identifier: llmtokenratelimit.Identifier{
+						Type:  llmtokenratelimit.Header,
+						Value: ".*",
+					},
+					KeyItems: []*llmtokenratelimit.KeyItem{
+						{
+							Key: ".*",
+							Token: llmtokenratelimit.Token{
+								Number:        1000,
+								CountStrategy: llmtokenratelimit.InputTokens,
+							},
+							Time: llmtokenratelimit.Time{
+								Unit:  llmtokenratelimit.Second,
+								Value: 5,
+							},
+						},
+						{
+							Key: "12.*",
+							Token: llmtokenratelimit.Token{
+								Number:        1000,
+								CountStrategy: llmtokenratelimit.InputTokens,
+							},
+							Time: llmtokenratelimit.Time{
+								Unit:  llmtokenratelimit.Second,
+								Value: 5,
+							},
+						},
+					},
+				},
+			},
+		},
 	})
 
 	if err != nil {

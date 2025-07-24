@@ -27,12 +27,10 @@ import (
 )
 
 func InitSentinel() {
-	// 初始化 Sentinel
 	if err := sentinel.InitDefault(); err != nil {
 		panic(err)
 	}
 
-	// 加载测试规则
 	_, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
 		{
 			Resource: "/api/.*",
@@ -48,7 +46,7 @@ func InitSentinel() {
 						{
 							Key: ".*",
 							Token: llmtokenratelimit.Token{
-								Number:        10000, // 高限制，避免被阻塞
+								Number:        10000,
 								CountStrategy: llmtokenratelimit.InputTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -74,7 +72,7 @@ func InitSentinel() {
 						{
 							Key: ".*",
 							Token: llmtokenratelimit.Token{
-								Number:        1000000, // 超高限制
+								Number:        1000000,
 								CountStrategy: llmtokenratelimit.TotalTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -93,13 +91,11 @@ func InitSentinel() {
 	}
 }
 
-// BenchmarkEntryBasic 基础 Entry 调用性能
 func BenchmarkEntryBasic(b *testing.B) {
 	InitSentinel()
 
 	resource := "/api/test"
 
-	// 准备上下文
 	ctx := new(llmtokenratelimit.Context)
 	ctx.SetContext(llmtokenratelimit.KeyRequestInfos,
 		llmtokenratelimit.GenerateRequestInfos(
@@ -119,7 +115,6 @@ func BenchmarkEntryBasic(b *testing.B) {
 			continue
 		}
 
-		// 模拟处理完成
 		ctx.SetContext(llmtokenratelimit.KeyUsedTokenInfos,
 			llmtokenratelimit.GenerateUsedTokenInfos(
 				llmtokenratelimit.WithInputTokens(100)))
@@ -128,7 +123,6 @@ func BenchmarkEntryBasic(b *testing.B) {
 	}
 }
 
-// BenchmarkEntryWithDifferentResources 不同资源的性能对比
 func BenchmarkEntryWithDifferentResources(b *testing.B) {
 	InitSentinel()
 
@@ -170,7 +164,6 @@ func BenchmarkEntryWithDifferentResources(b *testing.B) {
 	}
 }
 
-// BenchmarkEntryWithVaryingTokens 不同Token数量的性能对比
 func BenchmarkEntryWithVaryingTokens(b *testing.B) {
 	InitSentinel()
 
@@ -208,7 +201,6 @@ func BenchmarkEntryWithVaryingTokens(b *testing.B) {
 	}
 }
 
-// BenchmarkEntryConcurrent 并发访问性能
 func BenchmarkEntryConcurrent(b *testing.B) {
 	InitSentinel()
 
@@ -246,7 +238,6 @@ func BenchmarkEntryConcurrent(b *testing.B) {
 	})
 }
 
-// BenchmarkEntryMemoryUsage 内存使用性能测试
 func BenchmarkEntryMemoryUsage(b *testing.B) {
 	InitSentinel()
 
@@ -272,7 +263,6 @@ func BenchmarkEntryMemoryUsage(b *testing.B) {
 			sentinel.WithArgs(ctx))
 
 		if blocked != nil {
-			fmt.Println("Blocked")
 			continue
 		}
 
@@ -289,13 +279,11 @@ func BenchmarkEntryMemoryUsage(b *testing.B) {
 	b.ReportMetric(float64(memStatsAfter.Alloc-memStatsBefore.Alloc)/float64(b.N), "bytes/op")
 }
 
-// BenchmarkEntryWithComplexHeaders 复杂Header场景
 func BenchmarkEntryWithComplexHeaders(b *testing.B) {
 	InitSentinel()
 
 	resource := "/api/complex-headers"
 
-	// 复杂的Header数据
 	complexHeaders := map[string]string{
 		"Authorization":    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 		"X-Request-ID":     "req-12345-67890-abcdef",
@@ -335,11 +323,9 @@ func BenchmarkEntryWithComplexHeaders(b *testing.B) {
 	}
 }
 
-// BenchmarkEntryErrorCases 错误场景性能
 func BenchmarkEntryErrorCases(b *testing.B) {
 	InitSentinel()
 
-	// 测试没有规则匹配的资源
 	resource := "/no-match/resource"
 
 	b.ResetTimer()
@@ -362,7 +348,6 @@ func BenchmarkEntryErrorCases(b *testing.B) {
 	}
 }
 
-// BenchmarkEntryScaleTest 规模化测试
 func BenchmarkEntryScaleTest(b *testing.B) {
 	InitSentinel()
 
@@ -380,7 +365,6 @@ func BenchmarkEntryScaleTest(b *testing.B) {
 	var wg sync.WaitGroup
 	jobChan := make(chan int, b.N)
 
-	// 启动工作协程
 	for w := 0; w < numWorkers; w++ {
 		wg.Add(1)
 		go func(workerID int) {
@@ -412,7 +396,6 @@ func BenchmarkEntryScaleTest(b *testing.B) {
 		}(w)
 	}
 
-	// 分发任务
 	for i := 0; i < b.N; i++ {
 		jobChan <- i
 	}
@@ -421,7 +404,6 @@ func BenchmarkEntryScaleTest(b *testing.B) {
 	wg.Wait()
 }
 
-// BenchmarkEntryLatencyProfile 延迟分析
 func BenchmarkEntryLatencyProfile(b *testing.B) {
 	InitSentinel()
 
@@ -453,10 +435,9 @@ func BenchmarkEntryLatencyProfile(b *testing.B) {
 		latencies[i] = time.Since(start)
 	}
 
-	// 计算延迟统计
 	var totalLatency time.Duration
 	var maxLatency time.Duration
-	var minLatency = time.Hour // 初始化为一个很大的值
+	var minLatency = time.Hour
 
 	for _, lat := range latencies {
 		totalLatency += lat

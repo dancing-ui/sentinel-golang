@@ -46,7 +46,18 @@ func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
 	if llmTokenRatelimitCtx == nil {
 		return
 	}
-	for _, rule := range getRulesOfResource(ctx.Resource.Name()) {
+
+	rulesInterface := llmTokenRatelimitCtx.GetContext(KeyMatchedRules)
+	if rulesInterface == nil {
+		return
+	}
+
+	rules, ok := rulesInterface.([]*MatchedRule)
+	if !ok {
+		return
+	}
+
+	for _, rule := range rules {
 		ruleMatcher.update(llmTokenRatelimitCtx, rule)
 	}
 }

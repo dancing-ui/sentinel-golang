@@ -25,6 +25,7 @@ const (
 	KeyContext        = "llmTokenRatelimitContext"
 	KeyRequestInfos   = "llmTokenRatelimitReqInfos"
 	KeyUsedTokenInfos = "llmTokenRatelimitUsedTokenInfos"
+	KeyMatchedRules   = "llmTokenRatelimitMatchedRules"
 )
 
 var (
@@ -49,7 +50,6 @@ func (ctx *Context) SetContext(key string, value interface{}) {
 
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
-
 	if ctx.userContext == nil {
 		ctx.userContext = make(map[string]interface{})
 	}
@@ -57,17 +57,23 @@ func (ctx *Context) SetContext(key string, value interface{}) {
 }
 
 func (ctx *Context) GetContext(key string) interface{} {
-	if ctx == nil || ctx.userContext == nil {
+	if ctx == nil {
 		return nil
 	}
 
 	ctx.mu.RLock()
-	defer ctx.mu.RUnlock()
-
-	if ctx.userContext == nil {
-		return nil
+	if ctx.userContext != nil {
+		value := ctx.userContext[key]
+		ctx.mu.RUnlock()
+		return value
 	}
+	ctx.mu.RUnlock()
 
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	if ctx.userContext == nil {
+		ctx.userContext = make(map[string]interface{})
+	}
 	return ctx.userContext[key]
 }
 
@@ -76,9 +82,6 @@ func extractContextFromArgs(ctx *base.EntryContext) *Context {
 		return nil
 	}
 	for _, arg := range ctx.Input.Args {
-		if reflect.TypeOf(arg) != contextType {
-			continue
-		}
 		if llmCtx, ok := arg.(*Context); ok {
 			return llmCtx
 		}
@@ -92,9 +95,6 @@ func extractContextFromData(ctx *base.EntryContext) *Context {
 	}
 	for key, value := range ctx.Data {
 		if key != KeyContext {
-			continue
-		}
-		if reflect.TypeOf(value) != contextType {
 			continue
 		}
 		if llmCtx, ok := value.(*Context); ok {
