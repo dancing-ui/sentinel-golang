@@ -210,7 +210,6 @@ func TestValidateRuleName(t *testing.T) {
 	tests := []struct {
 		name      string
 		ruleName  string
-		resource  string
 		wantError bool
 		errorMsg  string
 	}{
@@ -255,18 +254,11 @@ func TestValidateRuleName(t *testing.T) {
 			wantError: true,
 			errorMsg:  "ruleName contains forbidden character",
 		},
-		{
-			name:      "rule name with default rule name",
-			ruleName:  "overall-rule",
-			resource:  "/test",
-			wantError: true,
-			errorMsg:  "invalid ruleName",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateRuleName(tt.ruleName, tt.resource)
+			err := validateRuleName(tt.ruleName)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("validateRuleName() expected error but got nil")
@@ -312,12 +304,12 @@ func TestValidateIdentifier(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "empty value (allowed)",
+			name: "empty value",
 			identifier: &Identifier{
 				Type:  Header,
 				Value: "",
 			},
-			wantError: false,
+			wantError: true,
 		},
 		{
 			name: "invalid identifier type",
@@ -570,7 +562,7 @@ func TestValidateKeyItem(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "empty key (allowed)",
+			name: "empty key",
 			keyItem: &KeyItem{
 				Key: "",
 				Token: Token{
@@ -582,7 +574,7 @@ func TestValidateKeyItem(t *testing.T) {
 					Value: 1,
 				},
 			},
-			wantError: false,
+			wantError: true,
 		},
 		{
 			name: "invalid key regex",

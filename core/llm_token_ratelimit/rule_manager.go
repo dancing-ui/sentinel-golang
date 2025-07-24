@@ -31,10 +31,10 @@ var (
 )
 
 func LoadRules(rules []*Rule) (bool, error) {
-	resRulesMap := make(map[string][]*Rule, 16)
-	for _, rule := range rules {
-		rule.setDefaultRuleOption()
+	filteredRules := FilterRules(rules)
 
+	resRulesMap := make(map[string][]*Rule, 16)
+	for _, rule := range filteredRules {
 		resRules, exist := resRulesMap[rule.Resource]
 		if !exist {
 			resRules = make([]*Rule, 0, 1)
@@ -56,16 +56,8 @@ func LoadRules(rules []*Rule) (bool, error) {
 func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 	validResRulesMap := make(map[string][]*Rule, len(rawResRulesMap))
 	for res, rules := range rawResRulesMap {
-		validResRules := make([]*Rule, 0, len(rules))
-		for _, rule := range rules {
-			if err := IsValidRule(rule); err != nil {
-				logging.Warn("[LLMTokenRateLimit onRuleUpdate] Ignoring invalid llm_token_ratelimit rule", "rule", rule, "reason", err.Error())
-				continue
-			}
-			validResRules = append(validResRules, rule)
-		}
-		if len(validResRules) > 0 {
-			validResRulesMap[res] = validResRules
+		if len(rules) > 0 {
+			validResRulesMap[res] = rules
 		}
 	}
 
@@ -106,26 +98,19 @@ func LoadRulesOfResource(res string, rules []*Rule) (bool, error) {
 }
 
 func onResourceRuleUpdate(res string, rawResRules []*Rule) (err error) {
-	validResRules := make([]*Rule, 0, len(rawResRules))
-	for _, rule := range rawResRules {
-		if err := IsValidRule(rule); err != nil {
-			logging.Warn("[LLMTokenRateLimit onResourceRuleUpdate] Ignoring invalid llm_token_ratelimit rule", "rule", rule, "reason", err.Error())
-			continue
-		}
-		validResRules = append(validResRules, rule)
-	}
+	filteredRules := FilterRules(rawResRules)
 
 	start := util.CurrentTimeNano()
 	rwMux.Lock()
-	if len(validResRules) == 0 {
+	if len(filteredRules) == 0 {
 		delete(ruleMap, res)
 	} else {
-		ruleMap[res] = validResRules
+		ruleMap[res] = filteredRules
 	}
 	rwMux.Unlock()
 	currentRules[res] = rawResRules
 	logging.Debug("[LLMTokenRateLimit onResourceRuleUpdate] Time statistic(ns) for updating llm_token_ratelimit rule", "timeCost", util.CurrentTimeNano()-start)
-	logging.Info("[LLMTokenRateLimit] load resource level rules", "resource", res, "validResRules", validResRules)
+	logging.Info("[LLMTokenRateLimit] load resource level rules", "resource", res, "filteredRules", filteredRules)
 	return nil
 }
 

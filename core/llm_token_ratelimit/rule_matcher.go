@@ -32,7 +32,7 @@ type MatchedRuleCollector interface {
 	Collect(ctx *Context, rule *Rule) []*MatchedRule
 }
 
-type StrategyChecker interface {
+type RateLimitChecker interface {
 	Check(ctx *Context, rules []*MatchedRule) bool
 }
 
@@ -48,7 +48,7 @@ var ruleMatcher = NewDefaultRuleMatcher()
 
 type RuleMatcher struct {
 	MatchedRuleCollectors map[Strategy]MatchedRuleCollector
-	StrategyCheckers      map[Strategy]StrategyChecker
+	RateLimitCheckers     map[Strategy]RateLimitChecker
 	IdentifierCheckers    map[IdentifierType]IdentifierChecker
 	TokenUpdaters         map[Strategy]TokenUpdater
 }
@@ -58,7 +58,7 @@ func NewDefaultRuleMatcher() *RuleMatcher {
 		MatchedRuleCollectors: map[Strategy]MatchedRuleCollector{
 			FixedWindow: &FixedWindowCollector{},
 		},
-		StrategyCheckers: map[Strategy]StrategyChecker{
+		RateLimitCheckers: map[Strategy]RateLimitChecker{
 			FixedWindow: &FixedWindowChecker{},
 		},
 		TokenUpdaters: map[Strategy]TokenUpdater{
@@ -79,8 +79,8 @@ func (m *RuleMatcher) getMatchedRuleCollector(strategy Strategy) MatchedRuleColl
 	return collector
 }
 
-func (m *RuleMatcher) getStrategyChecker(strategy Strategy) StrategyChecker {
-	checker, exists := m.StrategyCheckers[strategy]
+func (m *RuleMatcher) getRateLimitChecker(strategy Strategy) RateLimitChecker {
+	checker, exists := m.RateLimitCheckers[strategy]
 	if !exists {
 		return nil
 	}
@@ -115,7 +115,7 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 		return true
 	}
 
-	checker := m.getStrategyChecker(rule.Strategy)
+	checker := m.getRateLimitChecker(rule.Strategy)
 	if checker == nil {
 		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.checkPass() when get checker", "strategy", rule.Strategy.String())
 		return true

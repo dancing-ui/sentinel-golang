@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/alibaba/sentinel-golang/util"
 )
 
 func IsValidRule(r *Rule) error {
@@ -38,7 +36,7 @@ func IsValidRule(r *Rule) error {
 	}
 
 	// Validate RuleName
-	if err := validateRuleName(r.RuleName, r.Resource); err != nil {
+	if err := validateRuleName(r.RuleName); err != nil {
 		return fmt.Errorf("invalid ruleName: %w", err)
 	}
 
@@ -61,10 +59,6 @@ func validateResource(resource string) error {
 		return fmt.Errorf("resource pattern cannot be empty")
 	}
 
-	if resource == util.RegexCommonPattern {
-		return nil
-	}
-
 	if _, err := regexp.Compile(resource); err != nil {
 		return fmt.Errorf("resource pattern is not a valid regex: %w", err)
 	}
@@ -81,7 +75,7 @@ func validateStrategy(strategy Strategy) error {
 	}
 }
 
-func validateRuleName(ruleName, resource string) error {
+func validateRuleName(ruleName string) error {
 	if ruleName == "" {
 		return fmt.Errorf("ruleName pattern cannot be empty")
 	}
@@ -91,10 +85,6 @@ func validateRuleName(ruleName, resource string) error {
 		if strings.Contains(ruleName, char) {
 			return fmt.Errorf("ruleName contains forbidden character '%s' for Redis key (%s)", char, description)
 		}
-	}
-
-	if ruleName == DefaultRuleName && resource != DefaultResourcePattern {
-		return fmt.Errorf("invalid ruleName, ruleName is \"%s\", but the resource pattern isn't \"%s\"", DefaultRuleName, DefaultResourcePattern)
 	}
 
 	return nil
@@ -137,14 +127,11 @@ func validateIdentifier(identifier *Identifier) error {
 		return fmt.Errorf("unsupported identifier type: %v", identifier.Type)
 	}
 
-	if identifier.Value == util.RegexCommonPattern {
-		return nil
+	if identifier.Value == "" {
+		return fmt.Errorf("identifier value pattern cannot be empty")
 	}
-
-	if identifier.Value != "" {
-		if _, err := regexp.Compile(identifier.Value); err != nil {
-			return fmt.Errorf("identifier value is not a valid regex: %w", err)
-		}
+	if _, err := regexp.Compile(identifier.Value); err != nil {
+		return fmt.Errorf("identifier value is not a valid regex: %w", err)
 	}
 
 	return nil
@@ -155,14 +142,11 @@ func validateKeyItem(keyItem *KeyItem) error {
 		return fmt.Errorf("keyItem cannot be nil")
 	}
 
-	if keyItem.Key == util.RegexCommonPattern {
-		return nil
+	if keyItem.Key == "" {
+		return fmt.Errorf("key pattern cannot be empty")
 	}
-
-	if keyItem.Key != "" {
-		if _, err := regexp.Compile(keyItem.Key); err != nil {
-			return fmt.Errorf("key pattern is not a valid regex: %w", err)
-		}
+	if _, err := regexp.Compile(keyItem.Key); err != nil {
+		return fmt.Errorf("key pattern is not a valid regex: %w", err)
 	}
 
 	// Validate Token (required)

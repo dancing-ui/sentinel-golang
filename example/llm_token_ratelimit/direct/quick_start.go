@@ -60,7 +60,7 @@ func main() {
 						{
 							Key: "12.*",
 							Token: llmtokenratelimit.Token{
-								Number:        1000,
+								Number:        2000,
 								CountStrategy: llmtokenratelimit.InputTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -126,7 +126,7 @@ func main() {
 					})),
 				"llmRunningTime": time.Duration(1) * time.Second,
 				llmtokenratelimit.KeyUsedTokenInfos: llmtokenratelimit.GenerateUsedTokenInfos(
-					llmtokenratelimit.WithInputTokens(2000),
+					llmtokenratelimit.WithInputTokens(1500),
 				),
 			},
 		},

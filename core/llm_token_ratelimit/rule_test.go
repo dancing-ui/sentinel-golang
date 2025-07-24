@@ -136,7 +136,7 @@ func TestRule_String(t *testing.T) {
 				"Identifier{Type:header, Value:user-id}",
 				"KeyItem{Key:hourly",
 				"Token{Number:1000, CountStrategy:total-tokens}",
-				"Time{Value:1, Unit:hour}",
+				"Time{Value:3600 second}",
 			},
 		},
 	}

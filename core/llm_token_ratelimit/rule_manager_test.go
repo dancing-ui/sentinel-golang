@@ -51,7 +51,7 @@ func TestLoadRules(t *testing.T) {
 		{
 			name: "valid single rule",
 			rules: []*Rule{
-				createValidRule("api-test", "test-rule-1"),
+				createValidRuleForRuleManager("api-test", "test-rule-1"),
 			},
 			expectedUpdate: true,
 			expectedError:  false,
@@ -60,8 +60,8 @@ func TestLoadRules(t *testing.T) {
 		{
 			name: "valid multiple rules",
 			rules: []*Rule{
-				createValidRule("api-test-1", "test-rule-1"),
-				createValidRule("api-test-2", "test-rule-2"),
+				createValidRuleForRuleManager("api-test-1", "test-rule-1"),
+				createValidRuleForRuleManager("api-test-2", "test-rule-2"),
 			},
 			expectedUpdate: true,
 			expectedError:  false,
@@ -70,8 +70,8 @@ func TestLoadRules(t *testing.T) {
 		{
 			name: "rules with same resource",
 			rules: []*Rule{
-				createValidRule("api-test", "test-rule-1"),
-				createValidRule("api-test", "test-rule-2"),
+				createValidRuleForRuleManager("api-test", "test-rule-1"),
+				createValidRuleForRuleManager("api-test", "test-rule-2"),
 			},
 			expectedUpdate: true,
 			expectedError:  false,
@@ -80,8 +80,8 @@ func TestLoadRules(t *testing.T) {
 		{
 			name: "mixed valid and invalid rules",
 			rules: []*Rule{
-				createValidRule("api-test", "test-rule-1"),
-				createInvalidRule(), // This should be ignored
+				createValidRuleForRuleManager("api-test", "test-rule-1"),
+				createInvalidRuleForRuleManager(), // This should be ignored
 			},
 			expectedUpdate: true,
 			expectedError:  false,
@@ -147,7 +147,7 @@ func TestLoadRulesOfResource(t *testing.T) {
 		{
 			name:           "empty resource",
 			resource:       "",
-			rules:          []*Rule{createValidRule("test", "rule1")},
+			rules:          []*Rule{createValidRuleForRuleManager("test", "rule1")},
 			expectedUpdate: false,
 			expectedError:  true,
 			errorMsg:       "empty resource",
@@ -156,7 +156,7 @@ func TestLoadRulesOfResource(t *testing.T) {
 		{
 			name:           "valid resource with rules",
 			resource:       "api-test",
-			rules:          []*Rule{createValidRule("api-test", "rule1")},
+			rules:          []*Rule{createValidRuleForRuleManager("api-test", "rule1")},
 			expectedUpdate: true,
 			expectedError:  false,
 			description:    "should load rules for specific resource",
@@ -218,8 +218,8 @@ func TestGetRules(t *testing.T) {
 
 	// Load some rules
 	testRules := []*Rule{
-		createValidRule("api-1", "rule-1"),
-		createValidRule("api-2", "rule-2"),
+		createValidRuleForRuleManager("api-1", "rule-1"),
+		createValidRuleForRuleManager("api-2", "rule-2"),
 	}
 	LoadRules(testRules)
 
@@ -242,9 +242,9 @@ func TestGetRulesOfResource(t *testing.T) {
 	defer clearRulesForTest()
 
 	testRules := []*Rule{
-		createValidRule("api-v1", "rule-1"),
-		createValidRule("api-v2", "rule-2"),
-		createValidRule("service", "rule-3"),
+		createValidRuleForRuleManager("api-v1", "rule-1"),
+		createValidRuleForRuleManager("api-v2", "rule-2"),
+		createValidRuleForRuleManager("service", "rule-3"),
 	}
 	LoadRules(testRules)
 
@@ -290,8 +290,8 @@ func TestClearRules(t *testing.T) {
 
 	// Load some rules first
 	testRules := []*Rule{
-		createValidRule("api-1", "rule-1"),
-		createValidRule("api-2", "rule-2"),
+		createValidRuleForRuleManager("api-1", "rule-1"),
+		createValidRuleForRuleManager("api-2", "rule-2"),
 	}
 	LoadRules(testRules)
 
@@ -320,8 +320,8 @@ func TestClearRulesOfResource(t *testing.T) {
 
 	// Load rules for multiple resources
 	testRules := []*Rule{
-		createValidRule("api-1", "rule-1"),
-		createValidRule("api-2", "rule-2"),
+		createValidRuleForRuleManager("api-1", "rule-1"),
+		createValidRuleForRuleManager("api-2", "rule-2"),
 	}
 	LoadRules(testRules)
 
@@ -364,7 +364,7 @@ func TestLoadRulesConcurrent(t *testing.T) {
 
 			var rules []*Rule
 			for j := 0; j < rulesPerGoroutine; j++ {
-				rule := createValidRule(
+				rule := createValidRuleForRuleManager(
 					fmt.Sprintf("api-concurrent-%d-%d", id, j),
 					fmt.Sprintf("rule-concurrent-%d-%d", id, j),
 				)
@@ -403,9 +403,9 @@ func TestGetRulesReadConcurrency(t *testing.T) {
 
 	// Load initial rules
 	initialRules := []*Rule{
-		createValidRule("api-read-test-1", "read-rule-1"),
-		createValidRule("api-read-test-2", "read-rule-2"),
-		createValidRule("api-read-test-3", "read-rule-3"),
+		createValidRuleForRuleManager("api-read-test-1", "read-rule-1"),
+		createValidRuleForRuleManager("api-read-test-2", "read-rule-2"),
+		createValidRuleForRuleManager("api-read-test-3", "read-rule-3"),
 	}
 	LoadRules(initialRules)
 
@@ -468,7 +468,7 @@ func TestReadWriteConcurrency(t *testing.T) {
 
 			for j := 0; j < operationsPerGoroutine; j++ {
 				rules := []*Rule{
-					createValidRule(
+					createValidRuleForRuleManager(
 						fmt.Sprintf("api-rw-%d-%d", writerID, j),
 						fmt.Sprintf("rule-rw-%d-%d", writerID, j),
 					),
@@ -545,7 +545,7 @@ func TestResourceSpecificConcurrency(t *testing.T) {
 				switch j % 3 {
 				case 0: // Load rules
 					rules := []*Rule{
-						createValidRule(resourceName, fmt.Sprintf("rule-%d-%d", resID, j)),
+						createValidRuleForRuleManager(resourceName, fmt.Sprintf("rule-%d-%d", resID, j)),
 					}
 					_, err := LoadRulesOfResource(resourceName, rules)
 					if err != nil {
@@ -591,13 +591,13 @@ func TestRaceConditionDetection(t *testing.T) {
 		// Writer 1
 		go func() {
 			defer wg.Done()
-			LoadRules([]*Rule{createValidRule("api-race-1", "rule-1")})
+			LoadRules([]*Rule{createValidRuleForRuleManager("api-race-1", "rule-1")})
 		}()
 
 		// Writer 2
 		go func() {
 			defer wg.Done()
-			LoadRules([]*Rule{createValidRule("api-race-2", "rule-2")})
+			LoadRules([]*Rule{createValidRuleForRuleManager("api-race-2", "rule-2")})
 		}()
 
 		// Reader
@@ -621,7 +621,7 @@ func BenchmarkLoadRules(b *testing.B) {
 
 	rules := make([]*Rule, 100)
 	for i := 0; i < 100; i++ {
-		rules[i] = createValidRule(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
+		rules[i] = createValidRuleForRuleManager(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
 	}
 
 	b.ResetTimer()
@@ -637,7 +637,7 @@ func BenchmarkGetRules(b *testing.B) {
 	// Setup rules
 	rules := make([]*Rule, 100)
 	for i := 0; i < 100; i++ {
-		rules[i] = createValidRule(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
+		rules[i] = createValidRuleForRuleManager(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
 	}
 	LoadRules(rules)
 
@@ -654,7 +654,7 @@ func BenchmarkGetRulesOfResource(b *testing.B) {
 	// Setup rules
 	rules := make([]*Rule, 100)
 	for i := 0; i < 100; i++ {
-		rules[i] = createValidRule(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
+		rules[i] = createValidRuleForRuleManager(fmt.Sprintf("api-%d", i), fmt.Sprintf("rule-%d", i))
 	}
 	LoadRules(rules)
 
@@ -668,7 +668,7 @@ func BenchmarkConcurrentReadWrite(b *testing.B) {
 	clearRulesForTest()
 	defer clearRulesForTest()
 
-	rule := createValidRule("benchmark-api", "benchmark-rule")
+	rule := createValidRuleForRuleManager("benchmark-api", "benchmark-rule")
 
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
@@ -685,7 +685,7 @@ func BenchmarkConcurrentReadWrite(b *testing.B) {
 
 // Helper functions
 
-func createValidRule(resource, ruleName string) *Rule {
+func createValidRuleForRuleManager(resource, ruleName string) *Rule {
 	return &Rule{
 		Resource: resource,
 		Strategy: FixedWindow,
@@ -714,7 +714,7 @@ func createValidRule(resource, ruleName string) *Rule {
 	}
 }
 
-func createInvalidRule() *Rule {
+func createInvalidRuleForRuleManager() *Rule {
 	return &Rule{
 		Resource:  "", // Invalid empty resource
 		Strategy:  FixedWindow,
@@ -740,8 +740,8 @@ func TestRuleManagerConsistency(t *testing.T) {
 
 	// Test that rule manager maintains consistency under various operations
 	testRules := []*Rule{
-		createValidRule("api-consistency-1", "consistency-rule-1"),
-		createValidRule("api-consistency-2", "consistency-rule-2"),
+		createValidRuleForRuleManager("api-consistency-1", "consistency-rule-1"),
+		createValidRuleForRuleManager("api-consistency-2", "consistency-rule-2"),
 	}
 
 	// Load initial rules
@@ -770,7 +770,7 @@ func TestRuleManagerConsistency(t *testing.T) {
 
 	// Modify rules and reload
 	modifiedRules := []*Rule{
-		createValidRule("api-consistency-1", "consistency-rule-1-modified"),
+		createValidRuleForRuleManager("api-consistency-1", "consistency-rule-1-modified"),
 	}
 	updated, err = LoadRules(modifiedRules)
 	if err != nil {
@@ -799,7 +799,7 @@ func TestMemoryLeaks(t *testing.T) {
 
 	for i := 0; i < iterations; i++ {
 		rules := []*Rule{
-			createValidRule(fmt.Sprintf("api-memory-%d", i), fmt.Sprintf("memory-rule-%d", i)),
+			createValidRuleForRuleManager(fmt.Sprintf("api-memory-%d", i), fmt.Sprintf("memory-rule-%d", i)),
 		}
 
 		LoadRules(rules)

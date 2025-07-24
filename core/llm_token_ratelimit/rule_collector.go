@@ -21,9 +21,8 @@ import (
 	"github.com/alibaba/sentinel-golang/logging"
 )
 
-// TODO: 删除TokenSize
 const (
-	FixedWindowKeyFormat string = "sentinel-go:llm-token-ratelimit:%s:%s:%s:%d:%d:%s" // ruleName, strategy, identifierType, timeWindow, tokenSize, tokenCountStrategy
+	FixedWindowKeyFormat string = "sentinel-go:llm-token-ratelimit:%s:%s:%s:%d:%s" // ruleName, strategy, identifierType, timeWindow, tokenCountStrategy
 )
 
 type FixedWindowLimitKeyParams struct {
@@ -62,8 +61,8 @@ func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule 
 				continue
 			}
 
-			timeWindow := c.calculateTimeWindow(keyItem.Time)
-			if timeWindow == ErrorTimeWindow {
+			timeWindow := keyItem.Time.convertToSeconds()
+			if timeWindow == ErrorTimeDuration {
 				logging.Error(errors.New("error time window"), "error time window in llm_token_ratelimit.FixedWindowCollector.Collect()")
 				continue
 			}
@@ -85,21 +84,6 @@ func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule 
 		rules = append(rules, rule)
 	}
 	return rules
-}
-
-func (c *FixedWindowCollector) calculateTimeWindow(tm Time) int64 {
-	timeWindow := ErrorTimeWindow
-	switch tm.Unit {
-	case Second:
-		timeWindow = tm.Value
-	case Minute:
-		timeWindow = tm.Value * 60
-	case Hour:
-		timeWindow = tm.Value * 60 * 60
-	case Day:
-		timeWindow = tm.Value * 60 * 60 * 24
-	}
-	return timeWindow
 }
 
 func (c *FixedWindowCollector) addMatchedRule(params *FixedWindowLimitKeyParams, ruleMap map[string]*MatchedRule) {
@@ -130,7 +114,6 @@ func (c *FixedWindowCollector) generateLimitKey(params *FixedWindowLimitKeyParam
 		params.Strategy.String(),
 		params.IdentifierType.String(),
 		params.TimeWindow,
-		params.TokenSize,
 		params.CountStrategy.String(),
 	)
 }

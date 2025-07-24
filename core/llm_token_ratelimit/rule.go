@@ -88,3 +88,32 @@ func (r *Rule) setDefaultRuleOption() {
 		}
 	}
 }
+
+func (r *Rule) filterDuplicatedItem() {
+	occuredKeyItem := make(map[string]struct{})
+	var ruleItems []*RuleItem
+	for idx1 := len(r.RuleItems) - 1; idx1 >= 0; idx1-- {
+		var keyItems []*KeyItem
+		for idx2 := len(r.RuleItems[idx1].KeyItems) - 1; idx2 >= 0; idx2-- {
+			hash := generateHash(
+				r.RuleItems[idx1].Identifier.String(),
+				r.RuleItems[idx1].KeyItems[idx2].Key,
+				r.RuleItems[idx1].KeyItems[idx2].Token.CountStrategy.String(),
+				r.RuleItems[idx1].KeyItems[idx2].Time.String(),
+			)
+			if _, exists := occuredKeyItem[hash]; exists {
+				continue
+			}
+			occuredKeyItem[hash] = struct{}{}
+			keyItems = append(keyItems, r.RuleItems[idx1].KeyItems[idx2])
+		}
+		if len(keyItems) == 0 {
+			continue
+		}
+		ruleItems = append(ruleItems, &RuleItem{
+			Identifier: r.RuleItems[idx1].Identifier,
+			KeyItems:   keyItems,
+		})
+	}
+	r.RuleItems = ruleItems
+}

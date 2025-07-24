@@ -32,7 +32,7 @@ const (
 )
 
 const (
-	ErrorTimeWindow int64 = -1
+	ErrorTimeDuration int64 = -1
 )
 
 var RedisKeyForbiddenChars = map[string]string{

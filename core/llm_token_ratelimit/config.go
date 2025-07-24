@@ -263,6 +263,20 @@ func (t *Time) String() string {
 	if t == nil {
 		return "Time{nil}"
 	}
-	return fmt.Sprintf("Time{Value:%d, Unit:%s}",
-		t.Value, t.Unit.String())
+	return fmt.Sprintf("Time{Value:%d second}", t.convertToSeconds())
+}
+
+func (t *Time) convertToSeconds() int64 {
+	switch t.Unit {
+	case Second:
+		return t.Value
+	case Minute:
+		return t.Value * 60
+	case Hour:
+		return t.Value * 3600
+	case Day:
+		return t.Value * 86400
+	default:
+		return ErrorTimeDuration
+	}
 }

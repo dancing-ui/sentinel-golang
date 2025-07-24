@@ -305,11 +305,11 @@ func TestTime_String(t *testing.T) {
 		expected string
 	}{
 		{"nil time", nil, "Time{nil}"},
-		{"second", &Time{Value: 30, Unit: Second}, "Time{Value:30, Unit:second}"},
-		{"minute", &Time{Value: 5, Unit: Minute}, "Time{Value:5, Unit:minute}"},
-		{"hour", &Time{Value: 2, Unit: Hour}, "Time{Value:2, Unit:hour}"},
-		{"day", &Time{Value: 1, Unit: Day}, "Time{Value:1, Unit:day}"},
-		{"zero value", &Time{Value: 0, Unit: Hour}, "Time{Value:0, Unit:hour}"},
+		{"second", &Time{Value: 30, Unit: Second}, "Time{Value:30 second}"},
+		{"minute", &Time{Value: 5, Unit: Minute}, "Time{Value:300 second}"},
+		{"hour", &Time{Value: 2, Unit: Hour}, "Time{Value:7200 second}"},
+		{"day", &Time{Value: 1, Unit: Day}, "Time{Value:86400 second}"},
+		{"zero value", &Time{Value: 0, Unit: Hour}, "Time{Value:0 second}"},
 	}
 
 	for _, tt := range tests {
@@ -336,7 +336,7 @@ func TestKeyItem_String(t *testing.T) {
 				Token: Token{Number: 1000, CountStrategy: TotalTokens},
 				Time:  Time{Value: 1, Unit: Hour},
 			},
-			"KeyItem{Key:rate-limit, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:1, Unit:hour}}",
+			"KeyItem{Key:rate-limit, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:3600 second}}",
 		},
 		{
 			"empty key",
@@ -345,7 +345,7 @@ func TestKeyItem_String(t *testing.T) {
 				Token: Token{Number: 500, CountStrategy: InputTokens},
 				Time:  Time{Value: 30, Unit: Second},
 			},
-			"KeyItem{Key:, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:30, Unit:second}}",
+			"KeyItem{Key:, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:30 second}}",
 		},
 	}
 
@@ -386,7 +386,7 @@ func TestRuleItem_String(t *testing.T) {
 					},
 				},
 			},
-			"RuleItem{Identifier:Identifier{Type:header, Value:user-id}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:1, Unit:hour}}]}",
+			"RuleItem{Identifier:Identifier{Type:header, Value:user-id}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:3600 second}}]}",
 		},
 		{
 			"multiple keyitems",
@@ -405,7 +405,7 @@ func TestRuleItem_String(t *testing.T) {
 					},
 				},
 			},
-			"RuleItem{Identifier:Identifier{Type:header, Value:api-key}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:30, Unit:minute}}, KeyItem{Key:limit2, Token:Token{Number:300, CountStrategy:output-tokens}, Time:Time{Value:1, Unit:hour}}]}",
+			"RuleItem{Identifier:Identifier{Type:header, Value:api-key}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:1800 second}}, KeyItem{Key:limit2, Token:Token{Number:300, CountStrategy:output-tokens}, Time:Time{Value:3600 second}}]}",
 		},
 	}
 

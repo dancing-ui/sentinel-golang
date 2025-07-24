@@ -13,7 +13,6 @@ var (
 )
 
 const (
-	RegexCommonPattern = ".*"
 	RegexBeginPattern  = "^"
 	RegexEndPattern    = "$"
 )
@@ -21,10 +20,6 @@ const (
 func RegexMatch(pattern, text string) bool {
 	if pattern == "" || text == "" {
 		return false
-	}
-
-	if pattern == RegexCommonPattern {
-		return true
 	}
 
 	exactPattern := ensureExactRegexMatch(pattern)
