@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/alibaba/sentinel-golang/core/config"
+	llmtokenratelimit "github.com/alibaba/sentinel-golang/core/llm_token_ratelimit"
 	"github.com/alibaba/sentinel-golang/core/log/metric"
 	"github.com/alibaba/sentinel-golang/core/system_metric"
 	metric_exporter "github.com/alibaba/sentinel-golang/exporter/metric"
@@ -132,6 +133,12 @@ func initCoreComponents() error {
 		}()
 
 		return nil
+	}
+
+	if config.LLMTokenRateLimit() != nil {
+		if err := llmtokenratelimit.Init(config.LLMTokenRateLimit()); err != nil {
+			return err
+		}
 	}
 
 	return nil
