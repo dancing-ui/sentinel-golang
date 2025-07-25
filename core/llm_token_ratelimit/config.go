@@ -89,7 +89,7 @@ type Redis struct {
 
 type Config struct {
 	Rules        []*Rule `json:"rules" yaml:"rules"`
-	Redis        Redis   `json:"redis" yaml:"redis"`
+	Redis        *Redis  `json:"redis" yaml:"redis"`
 	ErrorCode    int32   `json:"errorCode" yaml:"errorCode"`
 	ErrorMessage string  `json:"errorMessage" yaml:"errorMessage"`
 }

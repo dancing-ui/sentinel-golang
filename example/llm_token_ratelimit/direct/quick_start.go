@@ -163,7 +163,7 @@ func main() {
 		data := testCase.Data
 		logging.Info("resource: %s", resource)
 		// wrapper request
-		ctx := new(llmtokenratelimit.Context)
+		ctx := llmtokenratelimit.NewContext()
 		ctx.SetContext(llmtokenratelimit.KeyRequestInfos, data[llmtokenratelimit.KeyRequestInfos])
 
 		// check

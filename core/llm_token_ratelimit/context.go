@@ -62,19 +62,11 @@ func (ctx *Context) GetContext(key string) interface{} {
 	}
 
 	ctx.mu.RLock()
+	defer ctx.mu.RUnlock()
 	if ctx.userContext != nil {
-		value := ctx.userContext[key]
-		ctx.mu.RUnlock()
-		return value
+		return ctx.userContext[key]
 	}
-	ctx.mu.RUnlock()
-
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
-	if ctx.userContext == nil {
-		ctx.userContext = make(map[string]interface{})
-	}
-	return ctx.userContext[key]
+	return nil
 }
 
 func extractContextFromArgs(ctx *base.EntryContext) *Context {

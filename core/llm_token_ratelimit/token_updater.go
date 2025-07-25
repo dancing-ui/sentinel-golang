@@ -57,12 +57,7 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 	usedToken := calculator.Calculate(ctx, infos)
 	keys := []string{rule.LimitKey}
 	args := []interface{}{rule.TokenSize, rule.TimeWindow, usedToken}
-	client := getRedisClient()
-	if client == nil {
-		logging.Error(errors.New("nil redis client"), "redis client is nil in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()")
-		return
-	}
-	response, err := getRedisClient().Eval(FixedWindowUpdateScript, keys, args...).Result()
+	response, err := globalRedisClient.Eval(FixedWindowUpdateScript, keys, args...)
 	if err != nil {
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()")
 		return

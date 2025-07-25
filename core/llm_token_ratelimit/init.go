@@ -15,34 +15,46 @@
 package llmtokenratelimit
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/alibaba/sentinel-golang/logging"
 )
 
-var (
-	configMu sync.RWMutex
-	config   *Config
-)
+type SafeConfig struct {
+	mu     sync.RWMutex
+	config *Config
+}
 
-func SetConfig(newConfig *Config) error {
+var globalConfig = &SafeConfig{}
+
+func (c *SafeConfig) SetConfig(newConfig *Config) error {
+	if c == nil {
+		return fmt.Errorf("safe config is nil")
+	}
 	if newConfig == nil {
 		return fmt.Errorf("config cannot be nil")
 	}
 
-	configMu.Lock()
-	defer configMu.Unlock()
-	config = newConfig
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.config = newConfig
 	return nil
 }
 
-func GetConfig() *Config {
-	configMu.RLock()
-	defer configMu.RUnlock()
-	return config
+func (c *SafeConfig) GetConfig() *Config {
+	if c == nil {
+		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
+		return nil
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.config
 }
 
 func initRules() error {
-	cfg := GetConfig()
+	cfg := globalConfig.GetConfig()
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
@@ -59,10 +71,10 @@ func initRules() error {
 }
 
 func Init(cfg *Config) error {
-	if err := SetConfig(cfg); err != nil {
+	if err := globalConfig.SetConfig(cfg); err != nil {
 		return err
 	}
-	if err := initRedisClusterClient(); err != nil {
+	if err := globalRedisClient.Init(cfg.Redis); err != nil {
 		return err
 	}
 	if err := initRules(); err != nil {

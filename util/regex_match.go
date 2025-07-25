@@ -13,8 +13,8 @@ var (
 )
 
 const (
-	RegexBeginPattern  = "^"
-	RegexEndPattern    = "$"
+	RegexBeginPattern = "^"
+	RegexEndPattern   = "$"
 )
 
 func RegexMatch(pattern, text string) bool {

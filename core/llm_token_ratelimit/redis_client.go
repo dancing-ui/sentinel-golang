@@ -22,23 +22,27 @@ import (
 	redis "github.com/go-redis/redis/v7"
 )
 
-var (
-	redisClientMu      sync.RWMutex
-	redisClusterClient *redis.ClusterClient
-)
+type SafeRedisClient struct {
+	mu     sync.RWMutex
+	client *redis.ClusterClient
+}
 
-func initRedisClusterClient() error {
-	cfg := GetConfig()
+var globalRedisClient = &SafeRedisClient{}
+
+func (c *SafeRedisClient) Init(cfg *Redis) error {
+	if c == nil {
+		return fmt.Errorf("safe redis client is nil")
+	}
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
 
-	serviceName := cfg.Redis.ServiceName
-	servicePort := cfg.Redis.ServicePort
-	timeout := time.Duration(cfg.Redis.Timeout) * time.Millisecond
-	poolSize := cfg.Redis.PoolSize
-	minIdleConns := cfg.Redis.MinIdleConns
-	maxRetries := cfg.Redis.MaxRetries
+	serviceName := cfg.ServiceName
+	servicePort := cfg.ServicePort
+	timeout := time.Duration(cfg.Timeout) * time.Millisecond
+	poolSize := cfg.PoolSize
+	minIdleConns := cfg.MinIdleConns
+	maxRetries := cfg.MaxRetries
 
 	if len(serviceName) == 0 {
 		serviceName = DefaultRedisServiceName
@@ -65,8 +69,8 @@ func initRedisClusterClient() error {
 		&redis.ClusterOptions{
 			Addrs: []string{addr},
 
-			Username: cfg.Redis.Username,
-			Password: cfg.Redis.Password,
+			Username: cfg.Username,
+			Password: cfg.Password,
 
 			DialTimeout:  timeout,
 			ReadTimeout:  timeout,
@@ -84,19 +88,34 @@ func initRedisClusterClient() error {
 	}
 	// Perform lock replacement only after the new client successfully connects;
 	// otherwise, a deadlock will occur if the connection fails
-	redisClientMu.Lock()
-	defer redisClientMu.Unlock()
-
-	if redisClusterClient != nil {
-		redisClusterClient.Close()
-	}
-
-	redisClusterClient = newClient
-	return nil
+	return c.updateClient(newClient)
 }
 
-func getRedisClient() *redis.ClusterClient {
-	redisClientMu.RLock()
-	defer redisClientMu.RUnlock()
-	return redisClusterClient
+func (c *SafeRedisClient) Eval(script string, keys []string, args ...interface{}) (interface{}, error) {
+	if c == nil {
+		return nil, fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.client == nil {
+		return nil, fmt.Errorf("redis client is not initialized")
+	}
+
+	return c.client.Eval(script, keys, args...).Result()
+}
+
+func (c *SafeRedisClient) updateClient(newClient *redis.ClusterClient) error {
+	if c == nil {
+		return fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.client != nil {
+		c.client.Close()
+	}
+
+	c.client = newClient
+	return nil
 }
