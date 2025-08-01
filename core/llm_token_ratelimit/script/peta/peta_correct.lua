@@ -73,40 +73,43 @@ end
 
 -- Calculate prediction error
 local predicted_error = math.abs(actual - estimated)
--- Calculate error ratio using sMAPE
-local error_ratio = math.abs(actual - estimated) / (actual + estimated) 
--- Error ratio threshold
-local error_ratio_thresh = 0.6
 -- Correction result
 local correct_result = 1
 -- Mainly handle underestimation cases to properly limit actual usage; overestimation may reject requests but won't affect downstream services
 if estimated < actual then -- Underestimation
-    if current_capacity >= predicted_error then -- Current window has capacity, so directly place in current window
-        redis.call('ZADD', sliding_window_key, current_timestamp, predicted_error)
-        current_capacity = current_capacity - predicted_error
-        redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
-    elseif error_ratio <= error_ratio_thresh then -- Error ratio within threshold, distribute to future windows
-        -- First, directly deduct all underestimated tokens
-        current_capacity = current_capacity - predicted_error 
-        redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
-        -- Get the latest valid timestamp
-        local last_valid_window = redis.call('ZRANGE', sliding_window_key, -1, -1, 'WITHSCORES')
-        local compensation_start = tonumber(last_valid_window[2])
-        if not compensation_start then -- Possibly all data just expired, use current timestamp minus window size as start
-            compensation_start = current_timestamp - window_size
-        end
-        while predicted_error ~= 0 do -- Distribute to future windows until all error is distributed
-            compensation_start = compensation_start + window_size
-            if max_capacity >= predicted_error then
-                redis.call('ZADD', sliding_window_key, compensation_start, predicted_error)
-                predicted_error = 0
-            else
-                redis.call('ZADD', sliding_window_key, compensation_start, max_capacity)
-                predicted_error = predicted_error - max_capacity
+    -- directly deduct all underestimated tokens
+    current_capacity = current_capacity - predicted_error
+    redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
+    -- Get the latest valid timestamp
+    local last_valid_window = redis.call('ZRANGE', sliding_window_key, -1, -1, 'WITHSCORES')
+    local compensation_start = tonumber(last_valid_window[2])
+    if not compensation_start then -- Possibly all data just expired, use current timestamp minus window size as start
+        compensation_start = current_timestamp
+    end
+    while predicted_error ~= 0 do -- Distribute to future windows until all error is distributed
+        if max_capacity >= predicted_error then
+            local L = compensation_start
+            local R = compensation_start + window_size
+            while L < R do
+                local mid = math.floor((L + R) / 2)
+                local valid_list = redis.call('ZRANGEBYSCORE', sliding_window_key, mid - window_size, mid)
+                local valid_tokens = 0
+                for i = 1, #valid_list do
+                    valid_tokens = valid_tokens + tonumber(valid_list[i])
+                end
+                if valid_tokens + predicted_error <= max_capacity then
+                    R = mid
+                else
+                    L = mid + 1
+                end
             end
+            redis.call('ZADD', sliding_window_key, L, predicted_error)
+            predicted_error = 0
+        else
+            redis.call('ZADD', sliding_window_key, compensation_start, max_capacity)
+            predicted_error = predicted_error - max_capacity
+            compensation_start = compensation_start + window_size
         end
-    else
-        correct_result = 0
     end
 end
 
