@@ -55,15 +55,18 @@ func GenerateUsedTokenInfos(uti ...UsedTokenInfo) *UsedTokenInfos {
 }
 
 func extractUsedTokenInfos(ctx *Context) *UsedTokenInfos {
+	if ctx == nil {
+		return nil
+	}
+
 	usedTokenInfosRaw := ctx.GetContext(KeyUsedTokenInfos)
 	if usedTokenInfosRaw == nil {
 		return nil
 	}
 
-	usedTokenInfos, ok := usedTokenInfosRaw.(*UsedTokenInfos)
-	if !ok {
-		return nil
+	if usedTokenInfos, ok := usedTokenInfosRaw.(*UsedTokenInfos); ok && usedTokenInfos != nil {
+		return usedTokenInfos
 	}
 
-	return usedTokenInfos
+	return nil
 }

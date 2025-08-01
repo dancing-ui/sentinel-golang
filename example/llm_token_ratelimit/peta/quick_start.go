@@ -37,8 +37,9 @@ func main() {
 		{
 
 			Resource: "/a/.*",
-			Strategy: llmtokenratelimit.FixedWindow,
+			Strategy: llmtokenratelimit.PETA,
 			RuleName: "rule-a",
+			Encoding: llmtokenratelimit.R50KBase,
 			RuleItems: []*llmtokenratelimit.RuleItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
@@ -49,7 +50,7 @@ func main() {
 						{
 							Key: ".*",
 							Token: llmtokenratelimit.Token{
-								Number:        1000,
+								Number:        3,
 								CountStrategy: llmtokenratelimit.InputTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -60,7 +61,7 @@ func main() {
 						{
 							Key: "12.*",
 							Token: llmtokenratelimit.Token{
-								Number:        2000,
+								Number:        3,
 								CountStrategy: llmtokenratelimit.InputTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -75,7 +76,7 @@ func main() {
 		{
 
 			Resource: "/b/.*",
-			Strategy: llmtokenratelimit.FixedWindow,
+			Strategy: llmtokenratelimit.PETA,
 			RuleName: "rule-b",
 			RuleItems: []*llmtokenratelimit.RuleItem{
 				{
@@ -124,9 +125,10 @@ func main() {
 					llmtokenratelimit.WithHeader(map[string]string{
 						"X-CA-A": "123",
 					})),
-				"llmRunningTime": time.Duration(1) * time.Second,
+				llmtokenratelimit.KeyLLMPrompts: "Hello, world!",
+				"llmRunningTime":                time.Duration(1) * time.Second,
 				llmtokenratelimit.KeyUsedTokenInfos: llmtokenratelimit.GenerateUsedTokenInfos(
-					llmtokenratelimit.WithInputTokens(1500),
+					llmtokenratelimit.WithInputTokens(4),
 				),
 			},
 		},
@@ -137,9 +139,10 @@ func main() {
 					llmtokenratelimit.WithHeader(map[string]string{
 						"X-CA-A": "123",
 					})),
-				"llmRunningTime": time.Duration(1) * time.Second,
+				llmtokenratelimit.KeyLLMPrompts: "Hello, world!",
+				"llmRunningTime":                time.Duration(1) * time.Second,
 				llmtokenratelimit.KeyUsedTokenInfos: llmtokenratelimit.GenerateUsedTokenInfos(
-					llmtokenratelimit.WithInputTokens(1000),
+					llmtokenratelimit.WithInputTokens(4),
 				),
 			},
 		},
@@ -150,9 +153,10 @@ func main() {
 					llmtokenratelimit.WithHeader(map[string]string{
 						"X-CA-A": "123",
 					})),
-				"llmRunningTime": time.Duration(1) * time.Second,
+				llmtokenratelimit.KeyLLMPrompts: "Hello, world!",
+				"llmRunningTime":                time.Duration(1) * time.Second,
 				llmtokenratelimit.KeyUsedTokenInfos: llmtokenratelimit.GenerateUsedTokenInfos(
-					llmtokenratelimit.WithInputTokens(1000),
+					llmtokenratelimit.WithInputTokens(4),
 				),
 			},
 		},
@@ -165,6 +169,7 @@ func main() {
 		// wrapper request
 		ctx := llmtokenratelimit.NewContext()
 		ctx.SetContext(llmtokenratelimit.KeyRequestInfos, data[llmtokenratelimit.KeyRequestInfos])
+		ctx.SetContext(llmtokenratelimit.KeyLLMPrompts, data[llmtokenratelimit.KeyLLMPrompts])
 
 		// check
 		e, b := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(ctx))

@@ -15,43 +15,8 @@
 package llmtokenratelimit
 
 import (
-	"errors"
 	"fmt"
-	"sync"
-
-	"github.com/alibaba/sentinel-golang/logging"
 )
-
-type SafeConfig struct {
-	mu     sync.RWMutex
-	config *Config
-}
-
-var globalConfig = &SafeConfig{}
-
-func (c *SafeConfig) SetConfig(newConfig *Config) error {
-	if c == nil {
-		return fmt.Errorf("safe config is nil")
-	}
-	if newConfig == nil {
-		return fmt.Errorf("config cannot be nil")
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.config = newConfig
-	return nil
-}
-
-func (c *SafeConfig) GetConfig() *Config {
-	if c == nil {
-		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
-		return nil
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.config
-}
 
 func initRules() error {
 	cfg := globalConfig.GetConfig()
@@ -71,6 +36,19 @@ func initRules() error {
 }
 
 func Init(cfg *Config) error {
+	if globalConfig == nil {
+		return fmt.Errorf("global config is nil")
+	}
+	if globalRedisClient == nil {
+		return fmt.Errorf("global redis client is nil")
+	}
+	if globalRuleMatcher == nil {
+		return fmt.Errorf("global rule matcher is nil")
+	}
+	if globalTokenCalculator == nil {
+		return fmt.Errorf("global token calculator is nil")
+	}
+
 	if err := globalConfig.SetConfig(cfg); err != nil {
 		return err
 	}

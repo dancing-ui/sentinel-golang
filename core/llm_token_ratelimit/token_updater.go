@@ -15,28 +15,18 @@
 package llmtokenratelimit
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/alibaba/sentinel-golang/logging"
-)
-
-const (
-	FixedWindowUpdateScript string = `
-	local ttl = redis.call('ttl', KEYS[1])
-	if ttl < 0 then
-		redis.call('set', KEYS[1], ARGV[1]-ARGV[3], 'EX', ARGV[2])
-		return {ARGV[1], ARGV[1]-ARGV[3], ARGV[2]}
-	end
-	return {ARGV[1], redis.call('decrby', KEYS[1], ARGV[3]), ttl}
-	`
+	"github.com/alibaba/sentinel-golang/util"
 )
 
 type FixedWindowUpdater struct{}
 
 func (u *FixedWindowUpdater) Update(ctx *Context, rule *MatchedRule) {
-	if rule == nil {
+	if u == nil || ctx == nil || rule == nil {
 		return
 	}
 
@@ -49,9 +39,12 @@ func (u *FixedWindowUpdater) Update(ctx *Context, rule *MatchedRule) {
 }
 
 func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *UsedTokenInfos) {
-	calculator := tokenCalculator.getCalculator(rule.CountStrategy)
+	if u == nil || ctx == nil || rule == nil || infos == nil {
+		return
+	}
+	calculator := globalTokenCalculator.getCalculator(rule.CountStrategy)
 	if calculator == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.updateLimitKeys() when get calculator", "strategy", rule.CountStrategy.String())
+		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey() when get calculator", "strategy", rule.CountStrategy.String())
 		return
 	}
 	usedToken := calculator.Calculate(ctx, infos)
@@ -62,47 +55,64 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()")
 		return
 	}
-	result := u.parseRedisResponse(response)
+	result := parseRedisResponse(response)
 	if result == nil || len(result) != 3 {
 		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()", "response", response)
 		return
 	}
 }
 
-func (u *FixedWindowUpdater) parseRedisResponse(response interface{}) []int64 {
-	resultSlice, ok := response.([]interface{})
-	if !ok || len(resultSlice) != 3 {
-		return nil
+// ================================= PETAUpdater ====================================
+
+//go:embed script/peta/peta_correct.lua
+var globalPETACorrectScript string
+
+type PETAUpdater struct{}
+
+func (u *PETAUpdater) Update(ctx *Context, rule *MatchedRule) {
+	if u == nil || ctx == nil || rule == nil {
+		return
 	}
 
-	result := make([]int64, 3)
-	for i, v := range resultSlice {
-		switch val := v.(type) {
-		case int64:
-			result[i] = val
-		case string:
-			num, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				logging.Error(err, "failed to parse redis response element in llm_token_ratelimit.FixedWindowChecker.parseRedisResponse()",
-					"index", i,
-					"value", val,
-					"error", err.Error(),
-				)
-				return nil
-			}
-			result[i] = num
-		case int:
-			result[i] = int64(val)
-		case float64:
-			result[i] = int64(val)
-		default:
-			logging.Error(nil, "unexpected redis response element type in llm_token_ratelimit.FixedWindowChecker.parseRedisResponse()",
-				"index", i,
-				"value", v,
-				"type", fmt.Sprintf("%T", v),
-			)
-			return nil
-		}
+	usedTokenInfos := extractUsedTokenInfos(ctx)
+	if usedTokenInfos == nil {
+		return
 	}
-	return result
+
+	u.updateLimitKey(ctx, rule, usedTokenInfos)
+}
+
+func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *UsedTokenInfos) {
+	if u == nil || ctx == nil || rule == nil || infos == nil {
+		return
+	}
+
+	calculator := globalTokenCalculator.getCalculator(rule.CountStrategy)
+	if calculator == nil {
+		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.PETAUpdater.updateLimitKey() when get calculator", "strategy", rule.CountStrategy.String())
+		return
+	}
+	actualToken := calculator.Calculate(ctx, infos)
+
+	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, rule.LimitKey)
+	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, rule.LimitKey)
+
+	keys := []string{slidingWindowKey, tokenBucketKey}
+	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken}
+	response, err := globalRedisClient.Eval(globalPETACorrectScript, keys, args...)
+	if err != nil {
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAUpdater.updateLimitKey()")
+		return
+	}
+	result := parseRedisResponse(response)
+	if result == nil || len(result) != 1 {
+		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.PETAUpdater.updateLimitKey()", "response", response)
+		return
+	}
+
+	correctResult := result[0]
+	if correctResult == 0 {
+		logging.Warn("PETAUpdater did not update the limit key, because the error ratio too big", "limitKey", rule.LimitKey, "correctResult", correctResult)
+		return
+	}
 }

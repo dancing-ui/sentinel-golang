@@ -14,7 +14,7 @@
 
 package llmtokenratelimit
 
-var tokenCalculator = NewDefaultTokenCalculator()
+var globalTokenCalculator = NewDefaultTokenCalculator()
 
 type TokenCalculator interface {
 	Calculate(ctx *Context, infos *UsedTokenInfos) int64
@@ -47,17 +47,26 @@ func (m *TokenCalculatorManager) getCalculator(strategy CountStrategy) TokenCalc
 type InputTokensCalculator struct{}
 
 func (c *InputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+	if c == nil || infos == nil {
+		return 0
+	}
 	return infos.InputTokens
 }
 
 type OutputTokensCalculator struct{}
 
 func (c *OutputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+	if c == nil || infos == nil {
+		return 0
+	}
 	return infos.OutputTokens
 }
 
 type TotalTokensCalculator struct{}
 
 func (c *TotalTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+	if c == nil || infos == nil {
+		return 0
+	}
 	return infos.InputTokens + infos.OutputTokens
 }

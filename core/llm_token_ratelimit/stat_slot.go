@@ -17,7 +17,7 @@ package llmtokenratelimit
 import "github.com/alibaba/sentinel-golang/core/base"
 
 const (
-	StatSlotOrder = 6000
+	StatSlotOrder uint32 = 6000
 )
 
 var (
@@ -53,11 +53,11 @@ func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
 	}
 
 	rules, ok := rulesInterface.([]*MatchedRule)
-	if !ok {
+	if !ok || rules == nil {
 		return
 	}
 
 	for _, rule := range rules {
-		ruleMatcher.update(llmTokenRatelimitCtx, rule)
+		globalRuleMatcher.update(llmTokenRatelimitCtx, rule)
 	}
 }

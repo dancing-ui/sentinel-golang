@@ -15,28 +15,23 @@
 package llmtokenratelimit
 
 import (
+	_ "embed"
 	"fmt"
-	"strconv"
 
 	"errors"
 
 	"github.com/alibaba/sentinel-golang/logging"
-)
-
-const (
-	FixedWindowQueryScript string = `
-	local ttl = redis.call('ttl', KEYS[1])
-	if ttl < 0 then
-		redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2])
-		return {ARGV[1], ARGV[1], ARGV[2]}
-	end
-	return {ARGV[1], redis.call('get', KEYS[1]), ttl}
-	`
+	"github.com/alibaba/sentinel-golang/util"
+	"github.com/pkoukk/tiktoken-go"
 )
 
 type FixedWindowChecker struct{}
 
 func (c *FixedWindowChecker) Check(ctx *Context, rules []*MatchedRule) bool {
+	if c == nil {
+		return true
+	}
+
 	if len(rules) == 0 {
 		return true
 	}
@@ -50,6 +45,10 @@ func (c *FixedWindowChecker) Check(ctx *Context, rules []*MatchedRule) bool {
 }
 
 func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
+	if c == nil {
+		return true
+	}
+
 	keys := []string{rule.LimitKey}
 	args := []interface{}{rule.TokenSize, rule.TimeWindow}
 	response, err := globalRedisClient.Eval(FixedWindowQueryScript, keys, args...)
@@ -57,7 +56,7 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()")
 		return true
 	}
-	result := c.parseRedisResponse(response)
+	result := parseRedisResponse(response)
 	if result == nil || len(result) != 3 {
 		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()", "response", response)
 		return true
@@ -72,40 +71,91 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 	return true
 }
 
-func (c *FixedWindowChecker) parseRedisResponse(response interface{}) []int64 {
-	resultSlice, ok := response.([]interface{})
-	if !ok || len(resultSlice) != 3 {
-		return nil
+// ================================= PETAChecker ====================================
+
+//go:embed script/peta/peta_withhold.lua
+var globalPETAWithholdScript string
+
+type PETAChecker struct{}
+
+func (c *PETAChecker) Check(ctx *Context, rules []*MatchedRule) bool {
+	if c == nil || ctx == nil {
+		return true
 	}
 
-	result := make([]int64, 3)
-	for i, v := range resultSlice {
-		switch val := v.(type) {
-		case int64:
-			result[i] = val
-		case string:
-			num, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				logging.Error(err, "failed to parse redis response element in llm_token_ratelimit.FixedWindowChecker.parseRedisResponse()",
-					"index", i,
-					"value", val,
-					"error", err.Error(),
-				)
-				return nil
-			}
-			result[i] = num
-		case int:
-			result[i] = int64(val)
-		case float64:
-			result[i] = int64(val)
-		default:
-			logging.Error(nil, "unexpected redis response element type in llm_token_ratelimit.FixedWindowChecker.parseRedisResponse()",
-				"index", i,
-				"value", v,
-				"type", fmt.Sprintf("%T", v),
-			)
-			return nil
+	if len(rules) == 0 {
+		return true
+	}
+
+	for _, rule := range rules {
+		if !c.checkLimitKey(ctx, rule) {
+			return false
 		}
 	}
-	return result
+	return true
+}
+
+func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
+	if c == nil || ctx == nil || rule == nil {
+		return true
+	}
+
+	promptsValue := ctx.GetContext(KeyLLMPrompts)
+	if promptsValue == nil {
+		return true
+	}
+	prompts, ok := promptsValue.(string)
+	if !ok {
+		return true
+	}
+
+	estimatedToken, err := c.countEncodingTokens(prompts, rule.Encoding)
+	if err != nil {
+		logging.Error(err, "failed to withhold tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()")
+		return true
+	}
+
+	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, rule.LimitKey)
+	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, rule.LimitKey)
+
+	keys := []string{slidingWindowKey, tokenBucketKey}
+	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000}
+	response, err := globalRedisClient.Eval(globalPETAWithholdScript, keys, args...)
+	if err != nil {
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAChecker.checkLimitKey()")
+		return true
+	}
+	result := parseRedisResponse(response)
+	if result == nil || len(result) != 1 {
+		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.PETAChecker.checkLimitKey()", "response", response)
+		return true
+	}
+
+	// TODO: add waiting callback
+	waitingTime := result[0]
+	if waitingTime != PETANoWaiting {
+		// TODO: adding LLM response headers using Context​
+		return false
+	}
+	c.setEstimatedToken(rule, int64(estimatedToken))
+	return true
+}
+
+func (c *PETAChecker) countEncodingTokens(texts string, encoding TiktokenEncoding) (int, error) {
+	if c == nil {
+		return -1, fmt.Errorf("PETAChecker is nil")
+	}
+
+	tke, err := tiktoken.GetEncoding(encoding.String())
+	if err != nil {
+		return -1, fmt.Errorf("getEncoding: %v", err)
+	}
+	return len(tke.Encode(texts, nil, nil)), nil
+}
+
+func (c *PETAChecker) setEstimatedToken(rule *MatchedRule, count int64) {
+	if c == nil || rule == nil {
+		return
+	}
+	rule.EstimatedToken = count
 }

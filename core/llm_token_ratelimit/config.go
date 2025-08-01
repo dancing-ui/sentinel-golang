@@ -15,8 +15,12 @@
 package llmtokenratelimit
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
+
+	"github.com/alibaba/sentinel-golang/logging"
 )
 
 type IdentifierType uint32
@@ -47,6 +51,17 @@ type Strategy uint32
 
 const (
 	FixedWindow Strategy = iota
+	PETA
+)
+
+type TiktokenEncoding uint32
+
+const (
+	CL100KBase TiktokenEncoding = iota
+	O200KBase
+	P50KBase
+	P50KEdit
+	R50KBase
 )
 
 type Identifier struct {
@@ -94,7 +109,63 @@ type Config struct {
 	ErrorMessage string  `json:"errorMessage" yaml:"errorMessage"`
 }
 
+type SafeConfig struct {
+	mu     sync.RWMutex
+	config *Config
+}
+
+var globalConfig = NewGlobalConfig()
+
+func NewGlobalConfig() *SafeConfig {
+	return &SafeConfig{}
+}
+
+func (c *SafeConfig) SetConfig(newConfig *Config) error {
+	if c == nil {
+		return fmt.Errorf("safe config is nil")
+	}
+	if newConfig == nil {
+		return fmt.Errorf("new config cannot be nil")
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.config = newConfig
+	return nil
+}
+
+func (c *SafeConfig) GetConfig() *Config {
+	if c == nil {
+		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
+		return nil
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.config
+}
+
+func GetErrorCode() int32 {
+	cfg := globalConfig.GetConfig()
+	if cfg == nil {
+		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
+		return -1
+	}
+	return cfg.ErrorCode
+}
+
+func GetErrorMsg() string {
+	cfg := globalConfig.GetConfig()
+	if cfg == nil {
+		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
+		return ""
+	}
+	return cfg.ErrorMessage
+}
+
 func (it *IdentifierType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if it == nil {
+		return fmt.Errorf("identifier type is nil")
+	}
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err
@@ -111,6 +182,9 @@ func (it *IdentifierType) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 func (ct *CountStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if ct == nil {
+		return fmt.Errorf("count strategy is nil")
+	}
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err
@@ -129,6 +203,9 @@ func (ct *CountStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error 
 }
 
 func (tu *TimeUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if tu == nil {
+		return fmt.Errorf("time unit is nil")
+	}
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err
@@ -149,6 +226,9 @@ func (tu *TimeUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (s *Strategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if s == nil {
+		return fmt.Errorf("strategy is nil")
+	}
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err
@@ -156,8 +236,35 @@ func (s *Strategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	switch str {
 	case "fixed-window":
 		*s = FixedWindow
+	case "peta":
+		*s = PETA
 	default:
 		return fmt.Errorf("unknown strategy: %s", str)
+	}
+	return nil
+}
+
+func (e *TiktokenEncoding) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if e == nil {
+		return fmt.Errorf("tiktoken encoding is nil")
+	}
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	switch str {
+	case "cl100k_base":
+		*e = CL100KBase
+	case "o200k_base":
+		*e = O200KBase
+	case "p50k_base":
+		*e = P50KBase
+	case "p50k_edit":
+		*e = P50KEdit
+	case "r50k_base":
+		*e = R50KBase
+	default:
+		return fmt.Errorf("unknown encoding: %s", str)
 	}
 	return nil
 }
@@ -205,6 +312,25 @@ func (s Strategy) String() string {
 	switch s {
 	case FixedWindow:
 		return "fixed-window"
+	case PETA:
+		return "peta"
+	default:
+		return "undefined"
+	}
+}
+
+func (e TiktokenEncoding) String() string {
+	switch e {
+	case CL100KBase:
+		return "cl100k_base"
+	case O200KBase:
+		return "o200k_base"
+	case P50KBase:
+		return "p50k_base"
+	case P50KEdit:
+		return "p50k_edit"
+	case R50KBase:
+		return "r50k_base"
 	default:
 		return "undefined"
 	}

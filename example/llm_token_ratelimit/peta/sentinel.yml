@@ -1,0 +1,38 @@
+version: "v1"
+sentinel:
+  app:
+    name: sentinel-go-demo
+  log:
+    metric:
+      maxFileCount: 7
+  llmTokenRatelimit:
+    rules:
+      - resource: ".*"
+        strategy: "fixed-window"
+        encoding: "r50k_base"
+        ruleItems:
+          - identifier:
+              type: "header"
+              value: ".*"
+            keyItems:
+              - key: ".*"
+                ruleName: "overall-rule"
+                token: 
+                  number: 1000
+                  countStrategy: "total-tokens"
+                time:
+                  unit: "second"
+                  value: 10
+
+    errorCode: 429
+    errorMessage: "Too Many Requests"
+    
+    redis:
+      serviceName: "127.0.0.1"
+      servicePort: 6379
+      username: "redis"
+      password: "redis"
+      timeout: 1000
+      poolSize: 10
+      minIdleConns: 5
+      maxRetries: 3

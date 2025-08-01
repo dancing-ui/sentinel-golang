@@ -23,9 +23,12 @@ import (
 type MatchedRule struct {
 	Strategy      Strategy
 	LimitKey      string
-	TimeWindow    int64
+	TimeWindow    int64 // Seconds
 	TokenSize     int64
 	CountStrategy CountStrategy
+	// PETA
+	Encoding       TiktokenEncoding
+	EstimatedToken int64
 }
 
 type MatchedRuleCollector interface {
@@ -44,7 +47,7 @@ type TokenUpdater interface {
 	Update(ctx *Context, rule *MatchedRule)
 }
 
-var ruleMatcher = NewDefaultRuleMatcher()
+var globalRuleMatcher = NewDefaultRuleMatcher()
 
 type RuleMatcher struct {
 	MatchedRuleCollectors map[Strategy]MatchedRuleCollector
@@ -56,13 +59,16 @@ type RuleMatcher struct {
 func NewDefaultRuleMatcher() *RuleMatcher {
 	return &RuleMatcher{
 		MatchedRuleCollectors: map[Strategy]MatchedRuleCollector{
-			FixedWindow: &FixedWindowCollector{},
+			FixedWindow: &BaseRuleCollector{},
+			PETA:        &BaseRuleCollector{},
 		},
 		RateLimitCheckers: map[Strategy]RateLimitChecker{
 			FixedWindow: &FixedWindowChecker{},
+			PETA:        &PETAChecker{},
 		},
 		TokenUpdaters: map[Strategy]TokenUpdater{
 			FixedWindow: &FixedWindowUpdater{},
+			PETA:        &PETAUpdater{},
 		},
 		IdentifierCheckers: map[IdentifierType]IdentifierChecker{
 			AllIdentifier: &AllIdentifierChecker{},
@@ -72,6 +78,9 @@ func NewDefaultRuleMatcher() *RuleMatcher {
 }
 
 func (m *RuleMatcher) getMatchedRuleCollector(strategy Strategy) MatchedRuleCollector {
+	if m == nil {
+		return nil
+	}
 	collector, exists := m.MatchedRuleCollectors[strategy]
 	if !exists {
 		return nil
@@ -80,6 +89,9 @@ func (m *RuleMatcher) getMatchedRuleCollector(strategy Strategy) MatchedRuleColl
 }
 
 func (m *RuleMatcher) getRateLimitChecker(strategy Strategy) RateLimitChecker {
+	if m == nil {
+		return nil
+	}
 	checker, exists := m.RateLimitCheckers[strategy]
 	if !exists {
 		return nil
@@ -88,6 +100,9 @@ func (m *RuleMatcher) getRateLimitChecker(strategy Strategy) RateLimitChecker {
 }
 
 func (m *RuleMatcher) getTokenUpdater(strategy Strategy) TokenUpdater {
+	if m == nil {
+		return nil
+	}
 	updater, exists := m.TokenUpdaters[strategy]
 	if !exists {
 		return nil
@@ -96,6 +111,9 @@ func (m *RuleMatcher) getTokenUpdater(strategy Strategy) TokenUpdater {
 }
 
 func (m *RuleMatcher) getIdentifierChecker(identifier IdentifierType) IdentifierChecker {
+	if m == nil {
+		return nil
+	}
 	checker, exists := m.IdentifierCheckers[identifier]
 	if !exists {
 		return nil
@@ -104,9 +122,12 @@ func (m *RuleMatcher) getIdentifierChecker(identifier IdentifierType) Identifier
 }
 
 func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
+	if m == nil {
+		return true
+	}
 	collector := m.getMatchedRuleCollector(rule.Strategy)
 	if collector == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.checkPass() when get collector", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get collector", "strategy", rule.Strategy.String())
 		return true
 	}
 
@@ -117,7 +138,7 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 
 	checker := m.getRateLimitChecker(rule.Strategy)
 	if checker == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.checkPass() when get checker", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get checker", "strategy", rule.Strategy.String())
 		return true
 	}
 
@@ -130,6 +151,10 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 }
 
 func (m *RuleMatcher) cacheMatchedRules(ctx *Context, newRules []*MatchedRule) {
+	if m == nil {
+		return
+	}
+
 	if len(newRules) == 0 {
 		return
 	}
@@ -139,7 +164,7 @@ func (m *RuleMatcher) cacheMatchedRules(ctx *Context, newRules []*MatchedRule) {
 		ctx.SetContext(KeyMatchedRules, newRules)
 	} else {
 		existingRules, ok := existingValue.([]*MatchedRule)
-		if !ok {
+		if !ok || existingRules == nil {
 			ctx.SetContext(KeyMatchedRules, newRules)
 		} else {
 			allRules := make([]*MatchedRule, 0, len(existingRules)+len(newRules))
@@ -151,12 +176,16 @@ func (m *RuleMatcher) cacheMatchedRules(ctx *Context, newRules []*MatchedRule) {
 }
 
 func (m *RuleMatcher) update(ctx *Context, rule *MatchedRule) {
+	if m == nil {
+		return
+	}
+
 	if rule == nil {
 		return
 	}
 	updater := m.getTokenUpdater(rule.Strategy)
 	if updater == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.update() when get updater", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.update() when get updater", "strategy", rule.Strategy.String())
 		return
 	}
 	updater.Update(ctx, rule)

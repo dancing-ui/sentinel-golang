@@ -45,19 +45,19 @@ func (m *mockIdentifierChecker) resetCallCount() {
 	m.callCount = 0
 }
 
-// Helper function to save and restore ruleMatcher
+// Helper function to save and restore globalRuleMatcher
 func saveAndRestoreRuleMatcher(t *testing.T) func() {
-	originalRuleMatcher := ruleMatcher
+	originalRuleMatcher := globalRuleMatcher
 	return func() {
-		ruleMatcher = originalRuleMatcher
+		globalRuleMatcher = originalRuleMatcher
 	}
 }
 
-// Helper function to save and restore ruleMatcher for benchmarks
+// Helper function to save and restore globalRuleMatcher for benchmarks
 func saveAndRestoreRuleMatcherForBenchmark(b *testing.B) func() {
-	originalRuleMatcher := ruleMatcher
+	originalRuleMatcher := globalRuleMatcher
 	return func() {
-		ruleMatcher = originalRuleMatcher
+		globalRuleMatcher = originalRuleMatcher
 	}
 }
 
@@ -130,7 +130,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 			Identifier{Type: AllIdentifier, Value: "test"},
 			"value",
 			false,
-			map[IdentifierType]int{Header: 1},
+			map[IdentifierType]int{Header: 0},
 			"handles nil request infos gracefully",
 		},
 	}
@@ -139,7 +139,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup mock checkers
 			mockCheckers := tt.setupMocks()
-			ruleMatcher = &RuleMatcher{
+			globalRuleMatcher = &RuleMatcher{
 				IdentifierCheckers: mockCheckers,
 			}
 
@@ -432,7 +432,7 @@ func TestAllIdentifierChecker_Integration(t *testing.T) {
 
 	// Integration test: verify AllIdentifierChecker works with real HeaderChecker
 	t.Run("integration with real HeaderChecker", func(t *testing.T) {
-		ruleMatcher = NewDefaultRuleMatcher()
+		globalRuleMatcher = NewDefaultRuleMatcher()
 
 		infos := &RequestInfos{
 			Headers: map[string]string{
@@ -461,19 +461,19 @@ func TestAllIdentifierChecker_Integration(t *testing.T) {
 func TestIdentifierChecker_ErrorCases(t *testing.T) {
 	defer saveAndRestoreRuleMatcher(t)()
 
-	t.Run("AllIdentifierChecker with nil ruleMatcher", func(t *testing.T) {
-		// Test behavior when ruleMatcher is nil
-		originalRuleMatcher := ruleMatcher
-		ruleMatcher = nil
+	t.Run("AllIdentifierChecker with nil globalRuleMatcher", func(t *testing.T) {
+		// Test behavior when globalRuleMatcher is nil
+		originalRuleMatcher := globalRuleMatcher
+		globalRuleMatcher = nil
 		defer func() {
-			ruleMatcher = originalRuleMatcher
+			globalRuleMatcher = originalRuleMatcher
 			if r := recover(); r != nil {
 				t.Logf("Expected panic recovered: %v", r)
 			}
 		}()
 
 		checker := &AllIdentifierChecker{}
-		// This should panic because ruleMatcher is nil
+		// This should panic because globalRuleMatcher is nil
 		checker.Check(&RequestInfos{}, Identifier{}, "")
 	})
 
@@ -548,7 +548,7 @@ func BenchmarkHeaderChecker_Check(b *testing.B) {
 func BenchmarkAllIdentifierChecker_Check(b *testing.B) {
 	defer saveAndRestoreRuleMatcherForBenchmark(b)()
 
-	ruleMatcher = NewDefaultRuleMatcher()
+	globalRuleMatcher = NewDefaultRuleMatcher()
 
 	headers := map[string]string{
 		"Authorization": "Bearer token123",
@@ -571,7 +571,7 @@ func BenchmarkAllIdentifierChecker_Check(b *testing.B) {
 func TestIdentifierChecker_ConcurrentAccess(t *testing.T) {
 	defer saveAndRestoreRuleMatcher(t)()
 
-	ruleMatcher = NewDefaultRuleMatcher()
+	globalRuleMatcher = NewDefaultRuleMatcher()
 
 	const numGoroutines = 100
 	const numOperations = 1000

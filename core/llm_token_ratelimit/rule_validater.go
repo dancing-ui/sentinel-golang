@@ -40,6 +40,11 @@ func IsValidRule(r *Rule) error {
 		return fmt.Errorf("invalid ruleName: %w", err)
 	}
 
+	// Validate Encoding
+	if err := validateEncoding(r.Encoding); err != nil {
+		return fmt.Errorf("invalid tiktoken encoding: %w", err)
+	}
+
 	// Validate RuleItems (required)
 	if len(r.RuleItems) == 0 {
 		return fmt.Errorf("ruleItems cannot be empty")
@@ -68,7 +73,7 @@ func validateResource(resource string) error {
 
 func validateStrategy(strategy Strategy) error {
 	switch strategy {
-	case FixedWindow:
+	case FixedWindow, PETA:
 		return nil
 	default:
 		return fmt.Errorf("unsupported strategy: %s", strategy.String())
@@ -88,6 +93,16 @@ func validateRuleName(ruleName string) error {
 	}
 
 	return nil
+}
+
+func validateEncoding(encoding TiktokenEncoding) error {
+	// Validate TiktokenEncoding
+	switch encoding {
+	case CL100KBase, O200KBase, P50KBase, P50KEdit, R50KBase:
+		return nil
+	default:
+		return fmt.Errorf("unsupported tiktoken encoding: %s", encoding.String())
+	}
 }
 
 func validateRuleItem(ruleItem *RuleItem) error {

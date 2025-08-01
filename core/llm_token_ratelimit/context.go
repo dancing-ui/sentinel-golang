@@ -21,13 +21,6 @@ import (
 	"github.com/alibaba/sentinel-golang/core/base"
 )
 
-const (
-	KeyContext        = "llmTokenRatelimitContext"
-	KeyRequestInfos   = "llmTokenRatelimitReqInfos"
-	KeyUsedTokenInfos = "llmTokenRatelimitUsedTokenInfos"
-	KeyMatchedRules   = "llmTokenRatelimitMatchedRules"
-)
-
 var (
 	contextType = reflect.TypeOf((*Context)(nil))
 )
@@ -70,11 +63,11 @@ func (ctx *Context) GetContext(key string) interface{} {
 }
 
 func extractContextFromArgs(ctx *base.EntryContext) *Context {
-	if ctx == nil {
+	if ctx == nil || ctx.Input == nil || ctx.Input.Args == nil {
 		return nil
 	}
 	for _, arg := range ctx.Input.Args {
-		if llmCtx, ok := arg.(*Context); ok {
+		if llmCtx, ok := arg.(*Context); ok && llmCtx != nil {
 			return llmCtx
 		}
 	}
@@ -82,14 +75,14 @@ func extractContextFromArgs(ctx *base.EntryContext) *Context {
 }
 
 func extractContextFromData(ctx *base.EntryContext) *Context {
-	if ctx == nil {
+	if ctx == nil || ctx.Data == nil {
 		return nil
 	}
 	for key, value := range ctx.Data {
 		if key != KeyContext {
 			continue
 		}
-		if llmCtx, ok := value.(*Context); ok {
+		if llmCtx, ok := value.(*Context); ok && llmCtx != nil {
 			return llmCtx
 		}
 	}

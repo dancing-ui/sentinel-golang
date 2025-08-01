@@ -27,7 +27,11 @@ type SafeRedisClient struct {
 	client *redis.ClusterClient
 }
 
-var globalRedisClient = &SafeRedisClient{}
+var globalRedisClient = NewGlobalRedisClient()
+
+func NewGlobalRedisClient() *SafeRedisClient {
+	return &SafeRedisClient{}
+}
 
 func (c *SafeRedisClient) Init(cfg *Redis) error {
 	if c == nil {
@@ -82,6 +86,10 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 			MaxRetries:   int(maxRetries),
 		},
 	)
+
+	if newClient == nil {
+		return fmt.Errorf("new redis client is nil")
+	}
 
 	if _, err := newClient.Ping().Result(); err != nil {
 		return fmt.Errorf("failed to connect to redis cluster: %v", err)

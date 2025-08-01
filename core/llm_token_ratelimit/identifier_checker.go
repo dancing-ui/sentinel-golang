@@ -19,7 +19,10 @@ import "github.com/alibaba/sentinel-golang/util"
 type AllIdentifierChecker struct{}
 
 func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
-	for identifierType, checker := range ruleMatcher.IdentifierCheckers {
+	if f == nil || infos == nil {
+		return false
+	}
+	for identifierType, checker := range globalRuleMatcher.IdentifierCheckers {
 		if identifierType == AllIdentifier {
 			continue
 		}
@@ -33,7 +36,7 @@ func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier,
 type HeaderChecker struct{}
 
 func (f *HeaderChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
-	if infos == nil || infos.Headers == nil {
+	if f == nil || infos == nil || infos.Headers == nil {
 		return false
 	}
 	for key, value := range infos.Headers {

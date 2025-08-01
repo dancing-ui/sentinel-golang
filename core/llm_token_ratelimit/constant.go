@@ -14,6 +14,7 @@
 
 package llmtokenratelimit
 
+// ================================= Config ====================================
 const (
 	DefaultResourcePattern        string = ".*"
 	DefaultRuleName               string = "overall-rule"
@@ -31,10 +32,53 @@ const (
 	DefaultErrorMessage string = "Too Many Requests"
 )
 
+// ================================= CommonError ==============================
 const (
 	ErrorTimeDuration int64 = -1
 )
 
+// ================================= Context ==================================
+const (
+	KeyContext        string = "llmTokenRatelimitContext"
+	KeyRequestInfos   string = "llmTokenRatelimitReqInfos"
+	KeyUsedTokenInfos string = "llmTokenRatelimitUsedTokenInfos"
+	KeyMatchedRules   string = "llmTokenRatelimitMatchedRules"
+	KeyLLMPrompts     string = "llmTokenRatelimitLLMPrompts"
+)
+
+// ================================= RedisRatelimitKeyFormat ==================
+const (
+	RedisRatelimitKeyFormat string = "sentinel-go:llm-token-ratelimit:%s:%s:%s:%d:%s" // ruleName, strategy, identifierType, timeWindow, tokenCountStrategy
+)
+
+// ================================= FixedWindowStrategy ======================
+const (
+	FixedWindowQueryScript string = `
+	local ttl = redis.call('ttl', KEYS[1])
+	if ttl < 0 then
+		redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2])
+		return {ARGV[1], ARGV[1], ARGV[2]}
+	end
+	return {ARGV[1], redis.call('get', KEYS[1]), ttl}
+	`
+	FixedWindowUpdateScript string = `
+	local ttl = redis.call('ttl', KEYS[1])
+	if ttl < 0 then
+		redis.call('set', KEYS[1], ARGV[1]-ARGV[3], 'EX', ARGV[2])
+		return {ARGV[1], ARGV[1]-ARGV[3], ARGV[2]}
+	end
+	return {ARGV[1], redis.call('decrby', KEYS[1], ARGV[3]), ttl}
+	`
+)
+
+// ================================= PETAStrategy =============================
+const (
+	PETANoWaiting              int64  = 0
+	PETASlidingWindowKeyFormat string = "{peta-v1}:sliding-window:%s" // redisRatelimitKey
+	PETATokenBucketKeyFormat   string = "{peta-v1}:token-bucket:%s"   // redisRatelimitKey
+)
+
+// ================================= RedisKeyForbiddenChars ===================
 var RedisKeyForbiddenChars = map[string]string{
 	// Control characters
 	" ":    "space",

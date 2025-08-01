@@ -22,16 +22,18 @@ import (
 type Rule struct {
 	ID string `json:"id,omitempty" yaml:"id,omitempty"`
 
-	Resource  string      `json:"resource" yaml:"resource"`
-	Strategy  Strategy    `json:"strategy" yaml:"strategy"`
-	RuleName  string      `json:"ruleName" yaml:"ruleName"`
-	RuleItems []*RuleItem `json:"ruleItems" yaml:"ruleItems"`
+	Resource  string           `json:"resource" yaml:"resource"`
+	Strategy  Strategy         `json:"strategy" yaml:"strategy"`
+	RuleName  string           `json:"ruleName" yaml:"ruleName"`
+	Encoding  TiktokenEncoding `json:"encoding" yaml:"encoding"`
+	RuleItems []*RuleItem      `json:"ruleItems" yaml:"ruleItems"`
 }
 
 func (r *Rule) ResourceName() string {
 	return r.Resource
 }
 
+// TODO: update rule string and tests
 func (r *Rule) String() string {
 	if r == nil {
 		return "Rule{nil}"

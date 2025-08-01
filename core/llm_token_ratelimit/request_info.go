@@ -41,15 +41,18 @@ func GenerateRequestInfos(ri ...RequestInfo) *RequestInfos {
 }
 
 func extractRequestInfos(ctx *Context) *RequestInfos {
+	if ctx == nil {
+		return nil
+	}
+
 	reqInfosRaw := ctx.GetContext(KeyRequestInfos)
 	if reqInfosRaw == nil {
 		return nil
 	}
 
-	reqInfos, ok := reqInfosRaw.(*RequestInfos)
-	if !ok {
-		return nil
+	if reqInfos, ok := reqInfosRaw.(*RequestInfos); ok && reqInfos != nil {
+		return reqInfos
 	}
 
-	return reqInfos
+	return nil
 }

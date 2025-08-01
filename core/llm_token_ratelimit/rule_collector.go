@@ -21,22 +21,20 @@ import (
 	"github.com/alibaba/sentinel-golang/logging"
 )
 
-const (
-	FixedWindowKeyFormat string = "sentinel-go:llm-token-ratelimit:%s:%s:%s:%d:%s" // ruleName, strategy, identifierType, timeWindow, tokenCountStrategy
-)
-
-type FixedWindowLimitKeyParams struct {
+type BaseLimitKeyParams struct {
 	Strategy       Strategy
 	IdentifierType IdentifierType
 	RuleName       string
 	TimeWindow     int64
 	TokenSize      int64
 	CountStrategy  CountStrategy
+	// PETA
+	Encoding TiktokenEncoding
 }
-type FixedWindowCollector struct{}
+type BaseRuleCollector struct{}
 
-func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
-	if rule == nil || rule.RuleItems == nil {
+func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
+	if c == nil || rule == nil || rule.RuleItems == nil {
 		return nil
 	}
 
@@ -48,9 +46,9 @@ func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule 
 	ruleMap := make(map[string]*MatchedRule)
 
 	for _, ruleItem := range rule.RuleItems {
-		identifierChecker := ruleMatcher.getIdentifierChecker(ruleItem.Identifier.Type)
+		identifierChecker := globalRuleMatcher.getIdentifierChecker(ruleItem.Identifier.Type)
 		if identifierChecker == nil {
-			logging.Error(errors.New("unknown identifier.type"), "unknown identifier.type in llm_token_ratelimit.FixedWindowChecker.Check()", "identifier.type", ruleItem.Identifier.Type.String())
+			logging.Error(errors.New("unknown identifier.type"), "unknown identifier.type in llm_token_ratelimit.BaseRuleCollector.Collect()", "identifier.type", ruleItem.Identifier.Type.String())
 			continue
 		}
 		if ruleItem.KeyItems == nil {
@@ -63,17 +61,19 @@ func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule 
 
 			timeWindow := keyItem.Time.convertToSeconds()
 			if timeWindow == ErrorTimeDuration {
-				logging.Error(errors.New("error time window"), "error time window in llm_token_ratelimit.FixedWindowCollector.Collect()")
+				logging.Error(errors.New("error time window"), "error time window in llm_token_ratelimit.BaseRuleCollector.Collect()")
 				continue
 			}
 
-			params := &FixedWindowLimitKeyParams{
+			params := &BaseLimitKeyParams{
 				RuleName:       rule.RuleName,
 				Strategy:       rule.Strategy,
 				IdentifierType: ruleItem.Identifier.Type,
 				TimeWindow:     timeWindow,
 				TokenSize:      keyItem.Token.Number,
 				CountStrategy:  keyItem.Token.CountStrategy,
+				// PETA
+				Encoding: rule.Encoding,
 			}
 			c.addMatchedRule(params, ruleMap)
 		}
@@ -86,34 +86,56 @@ func (c *FixedWindowCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule 
 	return rules
 }
 
-func (c *FixedWindowCollector) addMatchedRule(params *FixedWindowLimitKeyParams, ruleMap map[string]*MatchedRule) {
+func (c *BaseRuleCollector) addMatchedRule(params *BaseLimitKeyParams, ruleMap map[string]*MatchedRule) {
+	if c == nil {
+		return
+	}
 	if params.CountStrategy != TotalTokens {
-		limitKey := c.generateLimitKey(params)
+		limitKey, err := c.generateLimitKey(params)
+		if err != nil {
+			logging.Error(err, "generateLimitKey failed in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
+				"params", params,
+			)
+			return
+		}
 		ruleMap[limitKey] = &MatchedRule{
 			Strategy:      params.Strategy,
 			LimitKey:      limitKey,
 			TimeWindow:    params.TimeWindow,
 			TokenSize:     params.TokenSize,
 			CountStrategy: params.CountStrategy,
+			// PETA
+			Encoding: params.Encoding,
 		}
 	}
 	params.CountStrategy = TotalTokens
-	limitKey := c.generateLimitKey(params)
+	limitKey, err := c.generateLimitKey(params)
+	if err != nil {
+		logging.Error(err, "generateLimitKey failed in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
+			"params", params,
+		)
+		return
+	}
 	ruleMap[limitKey] = &MatchedRule{
 		Strategy:      params.Strategy,
 		LimitKey:      limitKey,
 		TimeWindow:    params.TimeWindow,
 		TokenSize:     params.TokenSize,
 		CountStrategy: params.CountStrategy,
+		// PETA
+		Encoding: params.Encoding,
 	}
 }
 
-func (c *FixedWindowCollector) generateLimitKey(params *FixedWindowLimitKeyParams) string {
-	return fmt.Sprintf(FixedWindowKeyFormat,
+func (c *BaseRuleCollector) generateLimitKey(params *BaseLimitKeyParams) (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("BaseRuleCollector is nil")
+	}
+	return fmt.Sprintf(RedisRatelimitKeyFormat,
 		params.RuleName,
 		params.Strategy.String(),
 		params.IdentifierType.String(),
 		params.TimeWindow,
 		params.CountStrategy.String(),
-	)
+	), nil
 }

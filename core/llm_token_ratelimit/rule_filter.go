@@ -17,6 +17,10 @@ package llmtokenratelimit
 import "github.com/alibaba/sentinel-golang/logging"
 
 func FilterRules(rules []*Rule) []*Rule {
+	if rules == nil {
+		logging.Warn("[LLMTokenRateLimit FilterRules] No rules to filter, returning empty slice")
+		return []*Rule{}
+	}
 	// 1. First, filter out invalid rules
 	// 2. Retain the latest rule corresponding to each unique rule-name
 	// 3. For each individual rule, retain the latest keyItems, so the ruleItem is unique

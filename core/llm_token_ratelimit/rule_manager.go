@@ -76,9 +76,11 @@ func LoadRulesOfResource(res string, rules []*Rule) (bool, error) {
 	if len(res) == 0 {
 		return false, errors.New("empty resource")
 	}
+	filteredRules := FilterRules(rules)
+
 	updateRuleMux.Lock()
 	defer updateRuleMux.Unlock()
-	if len(rules) == 0 {
+	if len(filteredRules) == 0 {
 		delete(currentRules, res)
 		rwMux.Lock()
 		delete(ruleMap, res)
@@ -87,30 +89,28 @@ func LoadRulesOfResource(res string, rules []*Rule) (bool, error) {
 		return true, nil
 	}
 
-	isEqual := reflect.DeepEqual(currentRules[res], rules)
+	isEqual := reflect.DeepEqual(currentRules[res], filteredRules)
 	if isEqual {
 		logging.Info("[LLMTokenRateLimit] Load resource level rules is the same with current resource level rules, so ignore load operation.")
 		return false, nil
 	}
 
-	err := onResourceRuleUpdate(res, rules)
+	err := onResourceRuleUpdate(res, filteredRules)
 	return true, err
 }
 
 func onResourceRuleUpdate(res string, rawResRules []*Rule) (err error) {
-	filteredRules := FilterRules(rawResRules)
-
 	start := util.CurrentTimeNano()
 	rwMux.Lock()
-	if len(filteredRules) == 0 {
+	if len(rawResRules) == 0 {
 		delete(ruleMap, res)
 	} else {
-		ruleMap[res] = filteredRules
+		ruleMap[res] = rawResRules
 	}
 	rwMux.Unlock()
 	currentRules[res] = rawResRules
 	logging.Debug("[LLMTokenRateLimit onResourceRuleUpdate] Time statistic(ns) for updating llm_token_ratelimit rule", "timeCost", util.CurrentTimeNano()-start)
-	logging.Info("[LLMTokenRateLimit] load resource level rules", "resource", res, "filteredRules", filteredRules)
+	logging.Info("[LLMTokenRateLimit] load resource level rules", "resource", res, "filteredRules", rawResRules)
 	return nil
 }
 

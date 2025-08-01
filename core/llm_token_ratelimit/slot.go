@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	RuleCheckSlotOrder = 6000
+	RuleCheckSlotOrder uint32 = 6000
 )
 
 var (
@@ -57,7 +57,7 @@ func checkPass(ctx *base.EntryContext) (bool, *Rule) {
 		return true, nil
 	}
 	for _, rule := range getRulesOfResource(ctx.Resource.Name()) {
-		if !ruleMatcher.checkPass(llmTokenRatelimitCtx, rule) {
+		if !globalRuleMatcher.checkPass(llmTokenRatelimitCtx, rule) {
 			return false, rule
 		}
 	}
