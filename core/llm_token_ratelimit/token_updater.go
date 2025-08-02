@@ -98,7 +98,7 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, rule.LimitKey)
 
 	keys := []string{slidingWindowKey, tokenBucketKey}
-	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken}
+	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
 	response, err := globalRedisClient.Eval(globalPETACorrectScript, keys, args...)
 	if err != nil {
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAUpdater.updateLimitKey()")

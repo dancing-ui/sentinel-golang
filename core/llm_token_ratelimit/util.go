@@ -16,7 +16,9 @@ package llmtokenratelimit
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
+	"unsafe"
 
 	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/spaolacci/murmur3"
@@ -73,4 +75,26 @@ func parseRedisResponse(response interface{}) []int64 {
 		}
 	}
 	return result
+}
+
+func generateRandomString(n int) string {
+	if n <= 0 {
+		return ""
+	}
+
+	b := make([]byte, n)
+
+	for i, cache, remain := n-1, rand.Int63(), RandomLetterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = rand.Int63(), RandomLetterIdxMax
+		}
+		if idx := int(cache & RandomLetterIdxMask); idx < len(RandomLetterBytes) {
+			b[i] = RandomLetterBytes[idx]
+			i--
+		}
+		cache >>= RandomLetterIdxBits
+		remain--
+	}
+
+	return *(*string)(unsafe.Pointer(&b))
 }

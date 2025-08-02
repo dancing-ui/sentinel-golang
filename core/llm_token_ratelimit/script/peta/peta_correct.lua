@@ -20,6 +20,7 @@
 -- ARGV[3]: Token bucket capacity
 -- ARGV[4]: Window size (milliseconds)
 -- ARGV[5]: Actual token consumption
+-- ARGV[6]: Random string for sliding window value (length less than or equal to 255)
 
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
@@ -29,6 +30,7 @@ local current_timestamp = tonumber(ARGV[2])
 local bucket_capacity = tonumber(ARGV[3])
 local window_size = tonumber(ARGV[4])
 local actual = tonumber(ARGV[5])
+local random_string = tostring(ARGV[6])
 
 -- Valid window start time
 local window_start = current_timestamp - window_size
@@ -42,14 +44,15 @@ if not current_capacity then
         'capacity', bucket_capacity, 
         'max_capacity', bucket_capacity
     )
-    redis.call('ZADD', sliding_window_key, current_timestamp, 0)
+    redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, 0))
 end
 
 -- Calculate expired tokens
 local released_token_list = redis.call('ZRANGEBYSCORE', sliding_window_key, 0, window_start)
 local released_tokens = 0
-for i = 1, #released_token_list do
-    released_tokens = released_tokens + tonumber(released_token_list[i])
+for _, v in ipairs(released_token_list) do
+    local _, tokens = struct.unpack('Bc0L', v)
+    released_tokens = released_tokens + tokens
 end
 
 if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new tokens
@@ -58,8 +61,9 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
     -- Calculate valid tokens
     local valid_token_list = redis.call('ZRANGE', sliding_window_key, 0, -1)
     local valid_tokens = 0
-    for i = 1, #valid_token_list do
-        valid_tokens = valid_tokens + tonumber(valid_token_list[i])
+    for _, v in ipairs(valid_token_list) do
+        local _, tokens = struct.unpack('Bc0L', v)
+        valid_tokens = valid_tokens + tokens
     end
     -- Update token count
     if current_capacity + released_tokens > max_capacity then -- If current capacity plus released tokens exceeds max capacity, reset to max capacity minus valid tokens
@@ -94,8 +98,9 @@ if estimated < actual then -- Underestimation
                 local mid = math.floor((L + R) / 2)
                 local valid_list = redis.call('ZRANGEBYSCORE', sliding_window_key, mid - window_size, mid)
                 local valid_tokens = 0
-                for i = 1, #valid_list do
-                    valid_tokens = valid_tokens + tonumber(valid_list[i])
+                for _, v in ipairs(valid_list) do
+                    local _, tokens = struct.unpack('Bc0L', v)
+                    valid_tokens = valid_tokens + tokens
                 end
                 if valid_tokens + predicted_error <= max_capacity then
                     R = mid
@@ -103,10 +108,10 @@ if estimated < actual then -- Underestimation
                     L = mid + 1
                 end
             end
-            redis.call('ZADD', sliding_window_key, L, predicted_error)
+            redis.call('ZADD', sliding_window_key, L, struct.pack('Bc0L', string.len(random_string), random_string, predicted_error))
             predicted_error = 0
         else
-            redis.call('ZADD', sliding_window_key, compensation_start, max_capacity)
+            redis.call('ZADD', sliding_window_key, compensation_start, struct.pack('Bc0L', string.len(random_string), random_string, max_capacity))
             predicted_error = predicted_error - max_capacity
             compensation_start = compensation_start + window_size
         end

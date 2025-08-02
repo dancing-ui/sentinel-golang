@@ -21,12 +21,46 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
 	"math/rand"
 
 	"github.com/alibaba/sentinel-golang/util"
 	"github.com/go-redis/redis/v7"
 )
+
+const (
+	PETARandomStringLength int = 16
+)
+
+const (
+	RandomLetterBytes   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	RandomLetterIdxBits = 6
+	RandomLetterIdxMask = 1<<RandomLetterIdxBits - 1
+	RandomLetterIdxMax  = 63 / RandomLetterIdxBits
+)
+
+func generateRandomString(n int) string {
+	if n <= 0 {
+		return ""
+	}
+
+	b := make([]byte, n)
+
+	for i, cache, remain := n-1, rand.Int63(), RandomLetterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = rand.Int63(), RandomLetterIdxMax
+		}
+		if idx := int(cache & RandomLetterIdxMask); idx < len(RandomLetterBytes) {
+			b[i] = RandomLetterBytes[idx]
+			i--
+		}
+		cache >>= RandomLetterIdxBits
+		remain--
+	}
+
+	return *(*string)(unsafe.Pointer(&b))
+}
 
 type BenchmarkLogger struct {
 	logFile *os.File
@@ -76,28 +110,25 @@ func (bl *BenchmarkLogger) Close() {
 }
 
 type PredictionPattern interface {
-	GetEstimatedTokens(timestamp int64) int
-	GetActualTokens(estimated int, timestamp int64) int
+	GetEstimatedTokens() int
+	GetActualTokens(estimated int) int
 }
 
 type ExtremeUnderestimatePattern struct {
 	BaseTokens        int
 	UnderestimateRate float64
-	startTime         int64
+	StartTime         time.Time
+	Duration          time.Duration
 }
 
-func (p *ExtremeUnderestimatePattern) GetEstimatedTokens(timestamp int64) int {
-	if p.startTime == 0 {
-		p.startTime = timestamp
-	}
-
+func (p *ExtremeUnderestimatePattern) GetEstimatedTokens() int {
 	actualWillConsume := p.BaseTokens + rand.Intn(200)
 	estimatedTokens := int(float64(actualWillConsume) * p.UnderestimateRate)
 
 	return estimatedTokens
 }
 
-func (p *ExtremeUnderestimatePattern) GetActualTokens(estimated int, timestamp int64) int {
+func (p *ExtremeUnderestimatePattern) GetActualTokens(estimated int) int {
 	return int(float64(estimated)/p.UnderestimateRate) + rand.Intn(20)
 }
 
@@ -150,7 +181,7 @@ func (p *PETASimulator) Exit() {
 
 func (p *PETASimulator) Withhold(ctx *context.Context, slidingWindowKey string, tokenBucketKey string, estimatedToken int) (int, error) {
 	keys := []string{slidingWindowKey, tokenBucketKey}
-	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000}
+	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
 
 	response, err := p.redisClient.Eval(p.withholdScript, keys, args...).Result()
 	if err != nil {
@@ -175,7 +206,7 @@ func (p *PETASimulator) Withhold(ctx *context.Context, slidingWindowKey string, 
 
 func (p *PETASimulator) Correct(ctx *context.Context, slidingWindowKey string, tokenBucketKey string, estimatedToken int, actualToken int) (int, error) {
 	keys := []string{slidingWindowKey, tokenBucketKey}
-	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000, actualToken}
+	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
 
 	response, err := p.redisClient.Eval(p.correctScript, keys, args...).Result()
 	if err != nil {
@@ -266,7 +297,7 @@ func (s *BenchmarkStats) AddEstimatedCount(estimated int) {
 	s.estimatedCount += int64(estimated)
 }
 
-func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, duraion time.Duration) {
+func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, duration time.Duration) {
 	simulator := NewPETASimulator("peta-benchmark", 5, 10000)
 	defer simulator.Exit()
 
@@ -290,8 +321,8 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 		go func(workerID int) {
 			defer wg.Done()
 
-			for time.Since(startTime) < duraion {
-				estimated := pattern.GetEstimatedTokens(int64(util.CurrentTimeMillis()))
+			for time.Since(startTime) < duration {
+				estimated := pattern.GetEstimatedTokens()
 
 				withholdStart := time.Now()
 				waitingTime, err := simulator.Withhold(&ctx, slidingWindowKey, tokenBucketKey, estimated)
@@ -315,7 +346,7 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 
 				time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond) // Simulate some processing time
 
-				actual := pattern.GetActualTokens(estimated, int64(util.CurrentTimeMillis()))
+				actual := pattern.GetActualTokens(estimated)
 
 				logger.Printf("Worker %d costed %d actual tokens", workerID, actual)
 				go stats.AddActualCount(actual)
@@ -351,14 +382,15 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 
 func BenchmarkPETA_ExtremeUnderestimate(b *testing.B) {
 	pattern := &ExtremeUnderestimatePattern{
+		StartTime:         time.Now(),
 		BaseTokens:        1000,
 		UnderestimateRate: 0.02,
+		Duration:          60 * time.Second,
 	}
 
-	concurrency := 1
-	duration := 30 * time.Second
+	concurrency := 10
 
 	b.ResetTimer()
-	runPETABenchmark(b, pattern, concurrency, duration)
+	runPETABenchmark(b, pattern, concurrency, pattern.Duration)
 	b.StopTimer()
 }

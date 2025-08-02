@@ -19,6 +19,7 @@
 -- ARGV[2]: Current timestamp (milliseconds)
 -- ARGV[3]: Token bucket capacity
 -- ARGV[4]: Window size (milliseconds)
+-- ARGV[5]: Random string for sliding window unique value (length less than or equal to 255)
 
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
@@ -27,6 +28,7 @@ local estimated = tonumber(ARGV[1])
 local current_timestamp = tonumber(ARGV[2])
 local bucket_capacity = tonumber(ARGV[3])
 local window_size = tonumber(ARGV[4])
+local random_string = tostring(ARGV[5])
 
 -- Valid window start time
 local window_start = current_timestamp - window_size
@@ -37,12 +39,19 @@ local bucket = redis.call('HMGET', token_bucket_key, 'capacity', 'max_capacity')
 local current_capacity = tonumber(bucket[1])
 local max_capacity = tonumber(bucket[2])
 
-if current_capacity then -- Token bucket already exists
+if not current_capacity then  -- First request, initialize
+    redis.call('HMSET', token_bucket_key, 
+        'capacity', bucket_capacity - estimated, 
+        'max_capacity', bucket_capacity
+    )
+    redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, estimated))
+else -- Token bucket already exists
     -- Calculate expired tokens
     local released_token_list = redis.call('ZRANGEBYSCORE', sliding_window_key, 0, window_start)
     local released_tokens = 0
-    for i = 1, #released_token_list do
-        released_tokens = released_tokens + tonumber(released_token_list[i])
+    for _, v in ipairs(released_token_list) do
+        local _, tokens = struct.unpack('Bc0L', v)
+        released_tokens = released_tokens + tokens
     end
 
     if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new tokens
@@ -51,8 +60,9 @@ if current_capacity then -- Token bucket already exists
         -- Calculate valid tokens
         local valid_token_list = redis.call('ZRANGE', sliding_window_key, 0, -1)
         local valid_tokens = 0
-        for i = 1, #valid_token_list do
-            valid_tokens = valid_tokens + tonumber(valid_token_list[i])
+        for _, v in ipairs(valid_token_list) do
+            local _, tokens = struct.unpack('Bc0L', v)
+            valid_tokens = valid_tokens + tokens
         end
         -- Update token count
         if current_capacity + released_tokens > max_capacity then -- If current capacity plus released tokens exceeds max capacity, reset to max capacity minus valid tokens
@@ -74,16 +84,10 @@ if current_capacity then -- Token bucket already exists
         -- Waiting time = fixed delay + window size - valid window interval
         waiting_time = 3 + window_size - (current_timestamp - first_valid_start)
     else -- Otherwise, capacity satisfies estimated consumption, no waiting required, update data
-        redis.call('ZADD', sliding_window_key, current_timestamp, estimated)
+        redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, estimated))
         current_capacity = current_capacity - estimated
         redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
     end
-else  -- First request, initialize
-    redis.call('HMSET', token_bucket_key, 
-        'capacity', bucket_capacity - estimated, 
-        'max_capacity', bucket_capacity
-    )
-    redis.call('ZADD', sliding_window_key, current_timestamp, estimated)
 end
 
 -- Set expiration time to window size plus 5 seconds buffer

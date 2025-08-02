@@ -76,6 +76,15 @@ const (
 	PETANoWaiting              int64  = 0
 	PETASlidingWindowKeyFormat string = "{peta-v1}:sliding-window:%s" // redisRatelimitKey
 	PETATokenBucketKeyFormat   string = "{peta-v1}:token-bucket:%s"   // redisRatelimitKey
+	PETARandomStringLength     int    = 16
+)
+
+// ================================= Generate Random String ===================
+const (
+	RandomLetterBytes   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	RandomLetterIdxBits = 6
+	RandomLetterIdxMask = 1<<RandomLetterIdxBits - 1
+	RandomLetterIdxMax  = 63 / RandomLetterIdxBits
 )
 
 // ================================= RedisKeyForbiddenChars ===================
