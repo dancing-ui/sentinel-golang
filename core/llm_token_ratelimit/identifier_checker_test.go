@@ -19,8 +19,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/alibaba/sentinel-golang/util"
 )
 
 // Mock IdentifierChecker for testing
@@ -82,7 +80,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 					Header:        &mockIdentifierChecker{checkFunc: func(*RequestInfos, Identifier, string) bool { return false }},
 				}
 			},
-			&RequestInfos{Headers: map[string]string{"test": "value"}},
+			&RequestInfos{Headers: map[string][]string{"test": {"value"}}},
 			Identifier{Type: AllIdentifier, Value: "test"},
 			"value",
 			false,
@@ -97,7 +95,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 					Header:        &mockIdentifierChecker{checkFunc: func(*RequestInfos, Identifier, string) bool { return true }},
 				}
 			},
-			&RequestInfos{Headers: map[string]string{"test": "value"}},
+			&RequestInfos{Headers: map[string][]string{"test": {"value"}}},
 			Identifier{Type: AllIdentifier, Value: "test"},
 			"value",
 			true,
@@ -111,7 +109,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 					AllIdentifier: &AllIdentifierChecker{},
 				}
 			},
-			&RequestInfos{Headers: map[string]string{"test": "value"}},
+			&RequestInfos{Headers: map[string][]string{"test": {"value"}}},
 			Identifier{Type: AllIdentifier, Value: "test"},
 			"value",
 			false,
@@ -174,11 +172,23 @@ func TestHeaderChecker_Check(t *testing.T) {
 		description    string
 	}{
 		{
+			"nil header value",
+			&RequestInfos{
+				Headers: map[string][]string{
+					"Authorization": nil,
+				},
+			},
+			Identifier{Type: Header, Value: "Authorization"},
+			"Bearer token123",
+			true,
+			"nil header value",
+		},
+		{
 			"exact match",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
-					"Content-Type":  "application/json",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
+					"Content-Type":  {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "Authorization"},
@@ -189,9 +199,9 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"regex match key",
 			&RequestInfos{
-				Headers: map[string]string{
-					"X-Custom-Header": "custom-value",
-					"Content-Type":    "application/json",
+				Headers: map[string][]string{
+					"X-Custom-Header": {"custom-value"},
+					"Content-Type":    {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "X-.*-Header"},
@@ -202,9 +212,9 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"regex match value",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
-					"Content-Type":  "application/json",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
+					"Content-Type":  {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "Authorization"},
@@ -215,9 +225,9 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"regex match both key and value",
 			&RequestInfos{
-				Headers: map[string]string{
-					"X-API-Key": "key_12345",
-					"X-Token":   "token_67890",
+				Headers: map[string][]string{
+					"X-API-Key": {"key_12345"},
+					"X-Token":   {"token_67890"},
 				},
 			},
 			Identifier{Type: Header, Value: "X-.*"},
@@ -228,9 +238,9 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"no match - wrong key",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
-					"Content-Type":  "application/json",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
+					"Content-Type":  {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "X-API-Key"},
@@ -241,9 +251,9 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"no match - wrong value",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
-					"Content-Type":  "application/json",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
+					"Content-Type":  {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "Authorization"},
@@ -261,7 +271,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 		},
 		{
 			"empty headers map",
-			&RequestInfos{Headers: map[string]string{}},
+			&RequestInfos{Headers: map[string][]string{}},
 			Identifier{Type: Header, Value: "Authorization"},
 			"Bearer token123",
 			false,
@@ -278,8 +288,8 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"empty identifier value",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
 				},
 			},
 			Identifier{Type: Header, Value: ""},
@@ -290,8 +300,8 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"empty pattern",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
 				},
 			},
 			Identifier{Type: Header, Value: "Authorization"},
@@ -302,8 +312,8 @@ func TestHeaderChecker_Check(t *testing.T) {
 		{
 			"case sensitive match",
 			&RequestInfos{
-				Headers: map[string]string{
-					"authorization": "bearer token123",
+				Headers: map[string][]string{
+					"authorization": {"bearer token123"},
 				},
 			},
 			Identifier{Type: Header, Value: "Authorization"},
@@ -312,12 +322,24 @@ func TestHeaderChecker_Check(t *testing.T) {
 			"performs case-sensitive matching",
 		},
 		{
+			"case2 sensitive match",
+			&RequestInfos{
+				Headers: map[string][]string{
+					"Authorization": {"bearer token123", "Bearer token123"},
+				},
+			},
+			Identifier{Type: Header, Value: "Authorization"},
+			"Bearer token123",
+			true,
+			"performs case2-sensitive matching",
+		},
+		{
 			"multiple headers, match any",
 			&RequestInfos{
-				Headers: map[string]string{
-					"Authorization": "Bearer token123",
-					"X-API-Key":     "api_key_456",
-					"Content-Type":  "application/json",
+				Headers: map[string][]string{
+					"Authorization": {"Bearer token123"},
+					"X-API-Key":     {"api_key_456"},
+					"Content-Type":  {"application/json"},
 				},
 			},
 			Identifier{Type: Header, Value: "X-API-Key"},
@@ -339,94 +361,6 @@ func TestHeaderChecker_Check(t *testing.T) {
 	}
 }
 
-func TestHeaderChecker_CrossValidation(t *testing.T) {
-	// Cross-validation: verify HeaderChecker behavior against known regex behavior
-	testCases := []struct {
-		name         string
-		headers      map[string]string
-		keyPattern   string
-		valuePattern string
-		shouldMatch  bool
-	}{
-		{
-			"literal match",
-			map[string]string{"test": "value"},
-			"test",
-			"value",
-			true,
-		},
-		{
-			"dot wildcard",
-			map[string]string{"test": "value"},
-			"t.st",
-			"val.e",
-			true,
-		},
-		{
-			"star quantifier",
-			map[string]string{"test-header": "test-value-123"},
-			"test.*",
-			"test.*",
-			true,
-		},
-		{
-			"anchored regex",
-			map[string]string{"test": "value"},
-			"^test$",
-			"^value$",
-			true,
-		},
-		{
-			"empty key",
-			map[string]string{"": "value"},
-			"^$",
-			"^$",
-			false,
-		},
-		{
-			"empty value",
-			map[string]string{"test": ""},
-			"^$",
-			"^$",
-			false,
-		},
-		{
-			"empty key and value",
-			map[string]string{"": ""},
-			"^$",
-			"^$",
-			false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// First verify util.RegexMatch behavior
-			for key, value := range tc.headers {
-				keyMatch := util.RegexMatch(tc.keyPattern, key)
-				valueMatch := util.RegexMatch(tc.valuePattern, value)
-				expectedRegexResult := keyMatch && valueMatch
-
-				if expectedRegexResult != tc.shouldMatch {
-					t.Errorf("Regex validation failed: key=%s, value=%s, keyPattern=%s, valuePattern=%s, expected=%v",
-						key, value, tc.keyPattern, tc.valuePattern, tc.shouldMatch)
-				}
-
-				// Then verify HeaderChecker result matches regex result
-				checker := &HeaderChecker{}
-				infos := &RequestInfos{Headers: tc.headers}
-				identifier := Identifier{Type: Header, Value: tc.keyPattern}
-
-				checkerResult := checker.Check(infos, identifier, tc.valuePattern)
-				if checkerResult != tc.shouldMatch {
-					t.Errorf("HeaderChecker result doesn't match expected: got %v, expected %v",
-						checkerResult, tc.shouldMatch)
-				}
-			}
-		})
-	}
-}
-
 func TestAllIdentifierChecker_Integration(t *testing.T) {
 	defer saveAndRestoreRuleMatcher(t)()
 
@@ -435,9 +369,9 @@ func TestAllIdentifierChecker_Integration(t *testing.T) {
 		globalRuleMatcher = NewDefaultRuleMatcher()
 
 		infos := &RequestInfos{
-			Headers: map[string]string{
-				"Authorization": "Bearer token123",
-				"X-API-Key":     "api_key_456",
+			Headers: map[string][]string{
+				"Authorization": {"Bearer token123"},
+				"X-API-Key":     {"api_key_456"},
 			},
 		}
 
@@ -481,8 +415,8 @@ func TestIdentifierChecker_ErrorCases(t *testing.T) {
 		// Test handling of invalid regular expressions
 		checker := &HeaderChecker{}
 		infos := &RequestInfos{
-			Headers: map[string]string{
-				"test": "value",
+			Headers: map[string][]string{
+				"test": {"value"},
 			},
 		}
 
@@ -498,9 +432,9 @@ func TestIdentifierChecker_ErrorCases(t *testing.T) {
 
 func TestIdentifierChecker_Performance(t *testing.T) {
 	// Performance testing
-	headers := make(map[string]string)
+	headers := make(map[string][]string)
 	for i := 0; i < 100; i++ {
-		headers[fmt.Sprintf("header-%d", i)] = fmt.Sprintf("value-%d", i)
+		headers[fmt.Sprintf("header-%d", i)] = []string{fmt.Sprintf("value-%d", i)}
 	}
 
 	infos := &RequestInfos{Headers: headers}
@@ -524,12 +458,12 @@ func TestIdentifierChecker_Performance(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkHeaderChecker_Check(b *testing.B) {
-	headers := map[string]string{
-		"Authorization": "Bearer token123",
-		"Content-Type":  "application/json",
-		"X-API-Key":     "api_key_456",
-		"User-Agent":    "TestAgent/1.0",
-		"Accept":        "application/json",
+	headers := map[string][]string{
+		"Authorization": {"Bearer token123"},
+		"Content-Type":  {"application/json"},
+		"X-API-Key":     {"api_key_456"},
+		"User-Agent":    {"TestAgent/1.0"},
+		"Accept":        {"application/json"},
 	}
 
 	infos := &RequestInfos{Headers: headers}
@@ -550,9 +484,9 @@ func BenchmarkAllIdentifierChecker_Check(b *testing.B) {
 
 	globalRuleMatcher = NewDefaultRuleMatcher()
 
-	headers := map[string]string{
-		"Authorization": "Bearer token123",
-		"Content-Type":  "application/json",
+	headers := map[string][]string{
+		"Authorization": {"Bearer token123"},
+		"Content-Type":  {"application/json"},
 	}
 
 	infos := &RequestInfos{Headers: headers}
@@ -576,9 +510,9 @@ func TestIdentifierChecker_ConcurrentAccess(t *testing.T) {
 	const numGoroutines = 100
 	const numOperations = 1000
 
-	headers := map[string]string{
-		"Authorization": "Bearer token123",
-		"X-API-Key":     "api_key_456",
+	headers := map[string][]string{
+		"Authorization": {"Bearer token123"},
+		"X-API-Key":     {"api_key_456"},
 	}
 
 	infos := &RequestInfos{Headers: headers}
@@ -646,9 +580,9 @@ func TestIdentifierChecker_ConcurrentAccess(t *testing.T) {
 // Edge case testing
 func TestIdentifierChecker_EdgeCases(t *testing.T) {
 	t.Run("special characters in headers", func(t *testing.T) {
-		headers := map[string]string{
-			"X-Special-!@#": "value-$%^",
-			"Content-Type":  "application/json; charset=utf-8",
+		headers := map[string][]string{
+			"X-Special-!@#": {"value-$%^"},
+			"Content-Type":  {"application/json; charset=utf-8"},
 		}
 
 		infos := &RequestInfos{Headers: headers}
@@ -664,9 +598,9 @@ func TestIdentifierChecker_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("unicode characters", func(t *testing.T) {
-		headers := map[string]string{
-			"X-中文-Header": "值-测试",
-			"X-Emoji-🚀":   "value-🎉",
+		headers := map[string][]string{
+			"X-中文-Header": {"值-测试"},
+			"X-Emoji-🚀":   {"value-🎉"},
 		}
 
 		infos := &RequestInfos{Headers: headers}

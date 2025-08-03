@@ -1,0 +1,13 @@
+{
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant."
+        },
+        {
+            "role": "human",
+            "content": "How are you?"
+        }
+    ],
+    "model": "GLM-4-Flash"
+}

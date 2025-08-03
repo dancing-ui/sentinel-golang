@@ -12,4 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package main
+
+import (
+	"llm_token_ratelimit/ratelimit"
+	"llm_token_ratelimit/server"
+)
+
+func main() {
+	ratelimit.InitSentinel()
+	server.StartServer("127.0.0.1", 9527)
+}

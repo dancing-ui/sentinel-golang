@@ -159,18 +159,18 @@ func (m *RuleMatcher) cacheMatchedRules(ctx *Context, newRules []*MatchedRule) {
 		return
 	}
 
-	existingValue := ctx.GetContext(KeyMatchedRules)
+	existingValue := ctx.Get(KeyMatchedRules)
 	if existingValue == nil {
-		ctx.SetContext(KeyMatchedRules, newRules)
+		ctx.Set(KeyMatchedRules, newRules)
 	} else {
 		existingRules, ok := existingValue.([]*MatchedRule)
 		if !ok || existingRules == nil {
-			ctx.SetContext(KeyMatchedRules, newRules)
+			ctx.Set(KeyMatchedRules, newRules)
 		} else {
 			allRules := make([]*MatchedRule, 0, len(existingRules)+len(newRules))
 			allRules = append(allRules, existingRules...)
 			allRules = append(allRules, newRules...)
-			ctx.SetContext(KeyMatchedRules, allRules)
+			ctx.Set(KeyMatchedRules, allRules)
 		}
 	}
 }

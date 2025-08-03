@@ -39,9 +39,14 @@ func (f *HeaderChecker) Check(infos *RequestInfos, identifier Identifier, patter
 	if f == nil || infos == nil || infos.Headers == nil {
 		return false
 	}
-	for key, value := range infos.Headers {
-		if util.RegexMatch(identifier.Value, key) && util.RegexMatch(pattern, value) {
-			return true
+	for key, values := range infos.Headers {
+		if len(values) == 0 {
+			values = []string{pattern}
+		}
+		for _, v := range values {
+			if util.RegexMatch(identifier.Value, key) && util.RegexMatch(pattern, v) {
+				return true
+			}
 		}
 	}
 	return false

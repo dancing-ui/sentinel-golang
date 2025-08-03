@@ -15,14 +15,9 @@
 package llmtokenratelimit
 
 import (
-	"reflect"
 	"sync"
 
 	"github.com/alibaba/sentinel-golang/core/base"
-)
-
-var (
-	contextType = reflect.TypeOf((*Context)(nil))
 )
 
 type Context struct {
@@ -36,7 +31,7 @@ func NewContext() *Context {
 	}
 }
 
-func (ctx *Context) SetContext(key string, value interface{}) {
+func (ctx *Context) Set(key string, value interface{}) {
 	if ctx == nil {
 		return
 	}
@@ -49,7 +44,7 @@ func (ctx *Context) SetContext(key string, value interface{}) {
 	ctx.userContext[key] = value
 }
 
-func (ctx *Context) GetContext(key string) interface{} {
+func (ctx *Context) Get(key string) interface{} {
 	if ctx == nil {
 		return nil
 	}

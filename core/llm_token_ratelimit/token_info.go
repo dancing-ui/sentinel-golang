@@ -14,33 +14,27 @@
 
 package llmtokenratelimit
 
-import "reflect"
-
 type UsedTokenInfos struct {
-	InputTokens  int64 `json:"inputTokens"`
-	OutputTokens int64 `json:"outputTokens"`
-	TotalTokens  int64 `json:"totalTokens"`
+	InputTokens  int `json:"inputTokens"`
+	OutputTokens int `json:"outputTokens"`
+	TotalTokens  int `json:"totalTokens"`
 }
-
-var (
-	usedTokenInfosType = reflect.TypeOf((*UsedTokenInfos)(nil))
-)
 
 type UsedTokenInfo func(*UsedTokenInfos)
 
-func WithInputTokens(inputTokens int64) UsedTokenInfo {
+func WithInputTokens(inputTokens int) UsedTokenInfo {
 	return func(infos *UsedTokenInfos) {
 		infos.InputTokens = inputTokens
 	}
 }
 
-func WithOutputTokens(outputTokens int64) UsedTokenInfo {
+func WithOutputTokens(outputTokens int) UsedTokenInfo {
 	return func(infos *UsedTokenInfos) {
 		infos.OutputTokens = outputTokens
 	}
 }
 
-func WithTotalTokens(totalTokens int64) UsedTokenInfo {
+func WithTotalTokens(totalTokens int) UsedTokenInfo {
 	return func(infos *UsedTokenInfos) {
 		infos.TotalTokens = totalTokens
 	}
@@ -59,7 +53,7 @@ func extractUsedTokenInfos(ctx *Context) *UsedTokenInfos {
 		return nil
 	}
 
-	usedTokenInfosRaw := ctx.GetContext(KeyUsedTokenInfos)
+	usedTokenInfosRaw := ctx.Get(KeyUsedTokenInfos)
 	if usedTokenInfosRaw == nil {
 		return nil
 	}

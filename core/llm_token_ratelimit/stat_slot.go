@@ -47,7 +47,7 @@ func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
 		return
 	}
 
-	rulesInterface := llmTokenRatelimitCtx.GetContext(KeyMatchedRules)
+	rulesInterface := llmTokenRatelimitCtx.Get(KeyMatchedRules)
 	if rulesInterface == nil {
 		return
 	}

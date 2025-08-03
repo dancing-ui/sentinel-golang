@@ -40,6 +40,8 @@ local current_capacity = tonumber(bucket[1])
 local max_capacity = tonumber(bucket[2])
 
 if not current_capacity then  -- First request, initialize
+    current_capacity = bucket_capacity
+    max_capacity = bucket_capacity
     redis.call('HMSET', token_bucket_key, 
         'capacity', bucket_capacity - estimated, 
         'max_capacity', bucket_capacity
@@ -91,8 +93,7 @@ else -- Token bucket already exists
 end
 
 -- Set expiration time to window size plus 5 seconds buffer
-redis.call('pexpire', sliding_window_key, window_size + 5000)
-redis.call('pexpire', token_bucket_key, window_size + 5000)
+redis.call('PEXPIRE', sliding_window_key, window_size + 5000)
+redis.call('PEXPIRE', token_bucket_key, window_size + 5000)
 
--- Return waiting time
-return {waiting_time}
+return {current_capacity, waiting_time}

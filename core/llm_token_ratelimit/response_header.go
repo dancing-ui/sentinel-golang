@@ -13,3 +13,43 @@
 // limitations under the License.
 
 package llmtokenratelimit
+
+type ResponseHeader struct {
+	headers map[string]string
+}
+
+func NewResponseHeader() *ResponseHeader {
+	return &ResponseHeader{
+		headers: make(map[string]string),
+	}
+}
+
+func (rh *ResponseHeader) Set(key, value string) {
+	if rh == nil {
+		return
+	}
+
+	if rh.headers == nil {
+		rh.headers = make(map[string]string)
+	}
+	rh.headers[key] = value
+}
+
+func (rh *ResponseHeader) Get(key string) string {
+	if rh == nil {
+		return ""
+	}
+
+	if rh.headers == nil {
+		return ""
+	}
+	return rh.headers[key]
+}
+
+func (rh *ResponseHeader) GetAll() map[string]string {
+	if rh == nil {
+		return nil
+	}
+
+	return rh.headers
+}

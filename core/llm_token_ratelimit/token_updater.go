@@ -23,6 +23,11 @@ import (
 	"github.com/alibaba/sentinel-golang/util"
 )
 
+// ================================= FixedWindowUpdater ====================================
+
+//go:embed script/fixed_window/update.lua
+var globalFixedWindowUpdateScript string
+
 type FixedWindowUpdater struct{}
 
 func (u *FixedWindowUpdater) Update(ctx *Context, rule *MatchedRule) {
@@ -49,14 +54,14 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 	}
 	usedToken := calculator.Calculate(ctx, infos)
 	keys := []string{rule.LimitKey}
-	args := []interface{}{rule.TokenSize, rule.TimeWindow, usedToken}
-	response, err := globalRedisClient.Eval(FixedWindowUpdateScript, keys, args...)
+	args := []interface{}{rule.TokenSize, rule.TimeWindow * 1000, usedToken}
+	response, err := globalRedisClient.Eval(globalFixedWindowUpdateScript, keys, args...)
 	if err != nil {
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()")
 		return
 	}
 	result := parseRedisResponse(response)
-	if result == nil || len(result) != 3 {
+	if result == nil || len(result) != 2 {
 		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()", "response", response)
 		return
 	}
@@ -64,7 +69,7 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 
 // ================================= PETAUpdater ====================================
 
-//go:embed script/peta/peta_correct.lua
+//go:embed script/peta/correct.lua
 var globalPETACorrectScript string
 
 type PETAUpdater struct{}

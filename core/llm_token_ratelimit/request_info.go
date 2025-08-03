@@ -14,19 +14,13 @@
 
 package llmtokenratelimit
 
-import "reflect"
-
 type RequestInfos struct {
-	Headers map[string]string `json:"headers"`
+	Headers map[string][]string `json:"headers"`
 }
-
-var (
-	requestInfosType = reflect.TypeOf((*RequestInfos)(nil))
-)
 
 type RequestInfo func(*RequestInfos)
 
-func WithHeader(headers map[string]string) RequestInfo {
+func WithHeader(headers map[string][]string) RequestInfo {
 	return func(infos *RequestInfos) {
 		infos.Headers = headers
 	}
@@ -45,7 +39,7 @@ func extractRequestInfos(ctx *Context) *RequestInfos {
 		return nil
 	}
 
-	reqInfosRaw := ctx.GetContext(KeyRequestInfos)
+	reqInfosRaw := ctx.Get(KeyRequestInfos)
 	if reqInfosRaw == nil {
 		return nil
 	}

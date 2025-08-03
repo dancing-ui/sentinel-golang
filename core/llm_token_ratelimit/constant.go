@@ -39,11 +39,12 @@ const (
 
 // ================================= Context ==================================
 const (
-	KeyContext        string = "llmTokenRatelimitContext"
-	KeyRequestInfos   string = "llmTokenRatelimitReqInfos"
-	KeyUsedTokenInfos string = "llmTokenRatelimitUsedTokenInfos"
-	KeyMatchedRules   string = "llmTokenRatelimitMatchedRules"
-	KeyLLMPrompts     string = "llmTokenRatelimitLLMPrompts"
+	KeyContext         string = "SentinelLLMTokenRatelimitContext"
+	KeyRequestInfos    string = "SentinelLLMTokenRatelimitReqInfos"
+	KeyUsedTokenInfos  string = "SentinelLLMTokenRatelimitUsedTokenInfos"
+	KeyMatchedRules    string = "SentinelLLMTokenRatelimitMatchedRules"
+	KeyLLMPrompts      string = "SentinelLLMTokenRatelimitLLMPrompts"
+	KeyResponseHeaders string = "SentinelLLMTokenRatelimitResponseHeaders"
 )
 
 // ================================= RedisRatelimitKeyFormat ==================
@@ -51,31 +52,19 @@ const (
 	RedisRatelimitKeyFormat string = "sentinel-go:llm-token-ratelimit:%s:%s:%s:%d:%s" // ruleName, strategy, identifierType, timeWindow, tokenCountStrategy
 )
 
-// ================================= FixedWindowStrategy ======================
+// ================================= ResponseHeader ==================
 const (
-	FixedWindowQueryScript string = `
-	local ttl = redis.call('ttl', KEYS[1])
-	if ttl < 0 then
-		redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2])
-		return {ARGV[1], ARGV[1], ARGV[2]}
-	end
-	return {ARGV[1], redis.call('get', KEYS[1]), ttl}
-	`
-	FixedWindowUpdateScript string = `
-	local ttl = redis.call('ttl', KEYS[1])
-	if ttl < 0 then
-		redis.call('set', KEYS[1], ARGV[1]-ARGV[3], 'EX', ARGV[2])
-		return {ARGV[1], ARGV[1]-ARGV[3], ARGV[2]}
-	end
-	return {ARGV[1], redis.call('decrby', KEYS[1], ARGV[3]), ttl}
-	`
+	ResponseHeaderRemainingTokens string = "X-Sentinel-LLM-Token-Ratelimit-RemainingTokens"
+	ResponseHeaderWaitingTime     string = "X-Sentinel-LLM-Token-Ratelimit-WaitingTime"
 )
+
+// ================================= FixedWindowStrategy ======================
 
 // ================================= PETAStrategy =============================
 const (
 	PETANoWaiting              int64  = 0
-	PETASlidingWindowKeyFormat string = "{peta-v1}:sliding-window:%s" // redisRatelimitKey
-	PETATokenBucketKeyFormat   string = "{peta-v1}:token-bucket:%s"   // redisRatelimitKey
+	PETASlidingWindowKeyFormat string = "{peta-hashtag}:sliding-window:%s" // redisRatelimitKey
+	PETATokenBucketKeyFormat   string = "{peta-hashtag}:token-bucket:%s"   // redisRatelimitKey
 	PETARandomStringLength     int    = 16
 )
 

@@ -56,9 +56,9 @@ func TestContext_SetContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.ctx.SetContext(tt.key, tt.value)
+			tt.ctx.Set(tt.key, tt.value)
 
-			actual := tt.ctx.GetContext(tt.key)
+			actual := tt.ctx.Get(tt.key)
 			if !reflect.DeepEqual(actual, tt.value) {
 				t.Errorf("Expected %v, got %v", tt.value, actual)
 			}
@@ -72,27 +72,27 @@ func TestContext_SetContext_NilContext(t *testing.T) {
 	// Should not panic
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("SetContext on nil context should not panic, got: %v", r)
+			t.Errorf("Set on nil context should not panic, got: %v", r)
 		}
 	}()
 
-	ctx.SetContext("key", "value")
+	ctx.Set("key", "value")
 }
 
 func TestContext_GetContext(t *testing.T) {
 	ctx := NewContext()
 
 	// Test getting non-existent key
-	value := ctx.GetContext("non-existent")
+	value := ctx.Get("non-existent")
 	if value != nil {
 		t.Errorf("Expected nil for non-existent key, got %v", value)
 	}
 
 	// Test getting existing key
 	expectedValue := "test-value"
-	ctx.SetContext("test-key", expectedValue)
+	ctx.Set("test-key", expectedValue)
 
-	actualValue := ctx.GetContext("test-key")
+	actualValue := ctx.Get("test-key")
 	if actualValue != expectedValue {
 		t.Errorf("Expected %v, got %v", expectedValue, actualValue)
 	}
@@ -101,7 +101,7 @@ func TestContext_GetContext(t *testing.T) {
 func TestContext_GetContext_NilContext(t *testing.T) {
 	var ctx *Context = nil
 
-	value := ctx.GetContext("any-key")
+	value := ctx.Get("any-key")
 	if value != nil {
 		t.Errorf("Expected nil from nil context, got %v", value)
 	}
@@ -110,7 +110,7 @@ func TestContext_GetContext_NilContext(t *testing.T) {
 func TestContext_GetContext_NilUserContext(t *testing.T) {
 	ctx := &Context{userContext: nil}
 
-	value := ctx.GetContext("any-key")
+	value := ctx.Get("any-key")
 	if value != nil {
 		t.Errorf("Expected nil from context with nil userContext, got %v", value)
 	}
@@ -132,10 +132,10 @@ func TestContext_ConcurrentReadWrite(t *testing.T) {
 			for j := 0; j < numOperations; j++ {
 				key := "writer-" + strconv.Itoa(writerID) + "-key-" + strconv.Itoa(j)
 				value := "writer-" + strconv.Itoa(writerID) + "-value-" + strconv.Itoa(j)
-				ctx.SetContext(key, value)
+				ctx.Set(key, value)
 
 				// Verify immediately
-				if got := ctx.GetContext(key); got != value {
+				if got := ctx.Get(key); got != value {
 					errors <- fmt.Errorf("writer %d: expected %v, got %v", writerID, value, got)
 					return
 				}
@@ -154,7 +154,7 @@ func TestContext_ConcurrentReadWrite(t *testing.T) {
 				key := "writer-" + strconv.Itoa(writerID) + "-key-" + strconv.Itoa(j)
 
 				// Reading might return nil if writer hasn't written yet, that's ok
-				ctx.GetContext(key)
+				ctx.Get(key)
 			}
 		}(i)
 	}
@@ -198,10 +198,10 @@ func TestContext_DataRace(t *testing.T) {
 			for j := 0; j < numOperations; j++ {
 				key := "shared-key"
 				value := "goroutine-" + strconv.Itoa(id) + "-iteration-" + strconv.Itoa(j)
-				ctx.SetContext(key, value)
+				ctx.Set(key, value)
 
 				// Read it back
-				ctx.GetContext(key)
+				ctx.Get(key)
 			}
 		}(i)
 	}
@@ -212,8 +212,8 @@ func TestContext_DataRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < numOperations; j++ {
-				ctx.GetContext("shared-key")
-				ctx.GetContext("non-existent-key")
+				ctx.Get("shared-key")
+				ctx.Get("non-existent-key")
 			}
 		}()
 	}
@@ -225,22 +225,22 @@ func TestContext_LazylInitialization(t *testing.T) {
 	// Create context with nil userContext
 	ctx := &Context{}
 
-	// SetContext should initialize userContext
-	ctx.SetContext("key", "value")
+	// Set should initialize userContext
+	ctx.Set("key", "value")
 
 	if ctx.userContext == nil {
-		t.Error("userContext should be initialized after SetContext")
+		t.Error("userContext should be initialized after Set")
 	}
 
 	// Verify value was set
-	if got := ctx.GetContext("key"); got != "value" {
+	if got := ctx.Get("key"); got != "value" {
 		t.Errorf("Expected 'value', got %v", got)
 	}
 }
 
 func TestExtractContextFromArgs(t *testing.T) {
 	llmCtx := NewContext()
-	llmCtx.SetContext("test", "value")
+	llmCtx.Set("test", "value")
 
 	tests := []struct {
 		name     string
@@ -286,7 +286,7 @@ func TestExtractContextFromArgs(t *testing.T) {
 
 func TestExtractContextFromData(t *testing.T) {
 	llmCtx := NewContext()
-	llmCtx.SetContext("test", "value")
+	llmCtx.Set("test", "value")
 
 	tests := []struct {
 		name     string
@@ -353,14 +353,14 @@ func TestContext_ConcurrentSetSameKey(t *testing.T) {
 		wg.Add(1)
 		go func(id int, value string) {
 			defer wg.Done()
-			ctx.SetContext(key, value)
+			ctx.Set(key, value)
 		}(i, values[i])
 	}
 
 	wg.Wait()
 
 	// Verify one of the values is set (race condition, any value is valid)
-	finalValue := ctx.GetContext(key)
+	finalValue := ctx.Get(key)
 	if finalValue == nil {
 		t.Error("Expected some value to be set")
 	}
@@ -390,7 +390,7 @@ func TestContext_ConcurrentGetNonExistentKey(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			key := "non-existent-" + strconv.Itoa(id)
-			value := ctx.GetContext(key)
+			value := ctx.Get(key)
 			if value != nil {
 				t.Errorf("Expected nil for non-existent key, got %v", value)
 			}
@@ -425,12 +425,12 @@ func TestContext_StressTest(t *testing.T) {
 
 				// Mix of operations on shared and local context
 				if j%3 == 0 {
-					ctx.SetContext(key, value)
+					ctx.Set(key, value)
 				} else if j%3 == 1 {
-					ctx.GetContext(key)
+					ctx.Get(key)
 				} else {
-					localCtx.SetContext(key, value)
-					if got := localCtx.GetContext(key); got != value {
+					localCtx.Set(key, value)
+					if got := localCtx.Get(key); got != value {
 						errors <- fmt.Errorf("goroutine %d: expected %v, got %v", id, value, got)
 						return
 					}
@@ -472,7 +472,7 @@ func BenchmarkContext_SetContext(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
-			ctx.SetContext(key+strconv.Itoa(i), value+strconv.Itoa(i))
+			ctx.Set(key+strconv.Itoa(i), value+strconv.Itoa(i))
 			i++
 		}
 	})
@@ -482,14 +482,14 @@ func BenchmarkContext_GetContext(b *testing.B) {
 	ctx := NewContext()
 	// Pre-populate with data
 	for i := 0; i < 1000; i++ {
-		ctx.SetContext("key-"+strconv.Itoa(i), "value-"+strconv.Itoa(i))
+		ctx.Set("key-"+strconv.Itoa(i), "value-"+strconv.Itoa(i))
 	}
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
-			ctx.GetContext("key-" + strconv.Itoa(i%1000))
+			ctx.Get("key-" + strconv.Itoa(i%1000))
 			i++
 		}
 	})
@@ -504,8 +504,8 @@ func BenchmarkContext_SetGet(b *testing.B) {
 		for pb.Next() {
 			key := "key-" + strconv.Itoa(i%100)
 			value := "value-" + strconv.Itoa(i)
-			ctx.SetContext(key, value)
-			ctx.GetContext(key)
+			ctx.Set(key, value)
+			ctx.Get(key)
 			i++
 		}
 	})
@@ -545,25 +545,25 @@ func BenchmarkExtractContextFromData(b *testing.B) {
 func TestContext_EdgeCases(t *testing.T) {
 	t.Run("empty string key", func(t *testing.T) {
 		ctx := NewContext()
-		ctx.SetContext("", "empty-key-value")
-		if got := ctx.GetContext(""); got != "empty-key-value" {
+		ctx.Set("", "empty-key-value")
+		if got := ctx.Get(""); got != "empty-key-value" {
 			t.Errorf("Expected 'empty-key-value', got %v", got)
 		}
 	})
 
 	t.Run("nil value", func(t *testing.T) {
 		ctx := NewContext()
-		ctx.SetContext("nil-value", nil)
-		if got := ctx.GetContext("nil-value"); got != nil {
+		ctx.Set("nil-value", nil)
+		if got := ctx.Get("nil-value"); got != nil {
 			t.Errorf("Expected nil, got %v", got)
 		}
 	})
 
 	t.Run("overwrite value", func(t *testing.T) {
 		ctx := NewContext()
-		ctx.SetContext("key", "value1")
-		ctx.SetContext("key", "value2")
-		if got := ctx.GetContext("key"); got != "value2" {
+		ctx.Set("key", "value1")
+		ctx.Set("key", "value2")
+		if got := ctx.Get("key"); got != "value2" {
 			t.Errorf("Expected 'value2', got %v", got)
 		}
 	})
@@ -580,8 +580,8 @@ func TestContext_EdgeCases(t *testing.T) {
 			Field3: []string{"a", "b", "c"},
 		}
 
-		ctx.SetContext("complex", complexValue)
-		if got := ctx.GetContext("complex"); !reflect.DeepEqual(got, complexValue) {
+		ctx.Set("complex", complexValue)
+		if got := ctx.Get("complex"); !reflect.DeepEqual(got, complexValue) {
 			t.Errorf("Expected %v, got %v", complexValue, got)
 		}
 	})

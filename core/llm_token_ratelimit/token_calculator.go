@@ -17,7 +17,7 @@ package llmtokenratelimit
 var globalTokenCalculator = NewDefaultTokenCalculator()
 
 type TokenCalculator interface {
-	Calculate(ctx *Context, infos *UsedTokenInfos) int64
+	Calculate(ctx *Context, infos *UsedTokenInfos) int
 }
 
 type TokenCalculatorManager struct {
@@ -46,7 +46,7 @@ func (m *TokenCalculatorManager) getCalculator(strategy CountStrategy) TokenCalc
 
 type InputTokensCalculator struct{}
 
-func (c *InputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+func (c *InputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int {
 	if c == nil || infos == nil {
 		return 0
 	}
@@ -55,7 +55,7 @@ func (c *InputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) i
 
 type OutputTokensCalculator struct{}
 
-func (c *OutputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+func (c *OutputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int {
 	if c == nil || infos == nil {
 		return 0
 	}
@@ -64,7 +64,7 @@ func (c *OutputTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) 
 
 type TotalTokensCalculator struct{}
 
-func (c *TotalTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int64 {
+func (c *TotalTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) int {
 	if c == nil || infos == nil {
 		return 0
 	}

@@ -13,3 +13,11 @@
 // limitations under the License.
 
 package llmtokenratelimit
+
+import "testing"
+
+func Benchmark_generateRandomString(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = generateRandomString(PETARandomStringLength)
+	}
+}

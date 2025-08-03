@@ -168,8 +168,8 @@ func NewPETASimulator(keyPrefix string, timeWindow int64, tokenSize int) *PETASi
 		keyPrefix:      keyPrefix,
 		TimeWindow:     timeWindow,
 		TokenSize:      tokenSize,
-		withholdScript: loadLuaScript("../../../../core/llm_token_ratelimit/script/peta/peta_withhold.lua"),
-		correctScript:  loadLuaScript("../../../../core/llm_token_ratelimit/script/peta/peta_correct.lua"),
+		withholdScript: loadLuaScript("../../../../core/llm_token_ratelimit/script/peta/withhold.lua"),
+		correctScript:  loadLuaScript("../../../../core/llm_token_ratelimit/script/peta/correct.lua"),
 	}
 }
 
