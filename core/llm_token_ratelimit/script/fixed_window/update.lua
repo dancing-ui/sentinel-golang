@@ -11,13 +11,10 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
-
 -- KEYS[1]: Fixed Window Key ("<redisRatelimitKey>")
-
 -- ARGV[1]: Maximum Token capacity
 -- ARGV[2]: Window size (milliseconds)
 -- ARGV[3]: Actual token consumption
-
 local fixed_window_key = KEYS[1]
 
 local max_token_capacity = tonumber(ARGV[1])
@@ -26,7 +23,7 @@ local actual = tonumber(ARGV[3])
 
 local ttl = redis.call('PTTL', fixed_window_key)
 if ttl < 0 then
-    redis.call('SET', fixed_window_key, max_token_capacity-actual, 'PX', window_size)
-    return {max_token_capacity-actual, window_size}
+    redis.call('SET', fixed_window_key, max_token_capacity - actual, 'PX', window_size)
+    return {max_token_capacity - actual, window_size}
 end
 return {redis.call('DECRBY', fixed_window_key, actual), ttl}

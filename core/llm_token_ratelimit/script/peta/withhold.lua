@@ -11,16 +11,13 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
-
 -- KEYS[1]: Sliding Window Key ("{peta-v<x>}:sliding-window:<redisRatelimitKey>")
 -- KEYS[2]: Token Bucket Key ("{peta-v<x>}:token-bucket:<redisRatelimitKey>")
-
 -- ARGV[1]: Estimated token consumption
 -- ARGV[2]: Current timestamp (milliseconds)
 -- ARGV[3]: Token bucket capacity
 -- ARGV[4]: Window size (milliseconds)
 -- ARGV[5]: Random string for sliding window unique value (length less than or equal to 255)
-
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
 
@@ -39,14 +36,12 @@ local bucket = redis.call('HMGET', token_bucket_key, 'capacity', 'max_capacity')
 local current_capacity = tonumber(bucket[1])
 local max_capacity = tonumber(bucket[2])
 
-if not current_capacity then  -- First request, initialize
+if not current_capacity then -- First request, initialize
     current_capacity = bucket_capacity
     max_capacity = bucket_capacity
-    redis.call('HMSET', token_bucket_key, 
-        'capacity', bucket_capacity - estimated, 
-        'max_capacity', bucket_capacity
-    )
-    redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, estimated))
+    redis.call('HMSET', token_bucket_key, 'capacity', bucket_capacity - estimated, 'max_capacity', bucket_capacity)
+    redis.call('ZADD', sliding_window_key, current_timestamp,
+        struct.pack('Bc0L', string.len(random_string), random_string, estimated))
 else -- Token bucket already exists
     -- Calculate expired tokens
     local released_token_list = redis.call('ZRANGEBYSCORE', sliding_window_key, 0, window_start)
@@ -86,7 +81,8 @@ else -- Token bucket already exists
         -- Waiting time = fixed delay + window size - valid window interval
         waiting_time = 3 + window_size - (current_timestamp - first_valid_start)
     else -- Otherwise, capacity satisfies estimated consumption, no waiting required, update data
-        redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, estimated))
+        redis.call('ZADD', sliding_window_key, current_timestamp,
+            struct.pack('Bc0L', string.len(random_string), random_string, estimated))
         current_capacity = current_capacity - estimated
         redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
     end

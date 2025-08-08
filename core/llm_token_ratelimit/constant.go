@@ -63,6 +63,7 @@ const (
 // ================================= PETAStrategy =============================
 const (
 	PETANoWaiting              int64  = 0
+	PETACorrectOK              int64  = 1
 	PETASlidingWindowKeyFormat string = "{peta-hashtag}:sliding-window:%s" // redisRatelimitKey
 	PETATokenBucketKeyFormat   string = "{peta-hashtag}:token-bucket:%s"   // redisRatelimitKey
 	PETARandomStringLength     int    = 16

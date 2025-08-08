@@ -15,11 +15,27 @@
 package main
 
 import (
+	"fmt"
 	"llm_token_ratelimit/ratelimit"
 	"llm_token_ratelimit/server"
+	"net/http"
+	_ "net/http/pprof"
+
+	"github.com/gin-gonic/gin"
 )
 
-func main() {
+func StartMonitor() {
+	fmt.Println("pprof is running on http://127.0.0.1:6060/debug/pprof/")
+	fmt.Println(http.ListenAndServe("127.0.0.1:6060", nil))
+}
+
+func StartSerivce() {
+	gin.SetMode(gin.ReleaseMode)
 	ratelimit.InitSentinel()
 	server.StartServer("127.0.0.1", 9527)
+}
+
+func main() {
+	go StartMonitor()
+	StartSerivce()
 }

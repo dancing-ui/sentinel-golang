@@ -129,10 +129,10 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 		entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(llmTokenRatelimitCtx))
 
 		if err != nil {
-			setResponseHeaders(c, llmTokenRatelimitCtx)
 			if options.blockFallback != nil {
 				options.blockFallback(c)
 			} else {
+				setResponseHeaders(c, llmTokenRatelimitCtx)
 				c.AbortWithStatusJSON(int(llmtokenratelimit.GetErrorCode()), gin.H{
 					"error": llmtokenratelimit.GetErrorMsg(),
 				})

@@ -11,16 +11,40 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
-
 -- KEYS[1]: Sliding Window Key ("{peta-v<x>}:sliding-window:<redisRatelimitKey>")
 -- KEYS[2]: Token Bucket Key ("{peta-v<x>}:token-bucket:<redisRatelimitKey>")
-
 -- ARGV[1]: Estimated token consumption
 -- ARGV[2]: Current timestamp (milliseconds)
 -- ARGV[3]: Token bucket capacity
 -- ARGV[4]: Window size (milliseconds)
 -- ARGV[5]: Actual token consumption
 -- ARGV[6]: Random string for sliding window value (length less than or equal to 255)
+local MAX_SEARCH_ITRATIONS = 64
+
+local function calculate_tokens_in_range(key, start_time, end_time)
+    local valid_list = redis.call('ZRANGEBYSCORE', key, start_time, end_time)
+    local valid_tokens = 0
+    for _, v in ipairs(valid_list) do
+        local _, tokens = struct.unpack('Bc0L', v)
+        valid_tokens = valid_tokens + tokens
+    end
+    return valid_tokens
+end
+
+local function binary_search_compensation_time(key, L, R, window_size, max_capacity, predicted_error)
+    local iter = 0
+    while L < R and iter < MAX_SEARCH_ITRATIONS do
+        iter = iter + 1
+        local mid = math.floor((L + R) / 2)
+        local valid_tokens = calculate_tokens_in_range(key, mid - window_size, mid)
+        if valid_tokens + predicted_error <= max_capacity then
+            R = mid
+        else
+            L = mid + 1
+        end
+    end
+    return L
+end
 
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
@@ -42,31 +66,19 @@ local max_capacity = tonumber(bucket[2])
 if not current_capacity then
     current_capacity = bucket_capacity
     max_capacity = bucket_capacity
-    redis.call('HMSET', token_bucket_key, 
-        'capacity', bucket_capacity, 
-        'max_capacity', bucket_capacity
-    )
-    redis.call('ZADD', sliding_window_key, current_timestamp, struct.pack('Bc0L', string.len(random_string), random_string, 0))
+    redis.call('HMSET', token_bucket_key, 'capacity', bucket_capacity, 'max_capacity', bucket_capacity)
+    redis.call('ZADD', sliding_window_key, current_timestamp,
+        struct.pack('Bc0L', string.len(random_string), random_string, 0))
 end
 
 -- Calculate expired tokens
-local released_token_list = redis.call('ZRANGEBYSCORE', sliding_window_key, 0, window_start)
-local released_tokens = 0
-for _, v in ipairs(released_token_list) do
-    local _, tokens = struct.unpack('Bc0L', v)
-    released_tokens = released_tokens + tokens
-end
+local released_tokens = calculate_tokens_in_range(sliding_window_key, 0, window_start)
 
 if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new tokens
     -- Clean up expired data
     redis.call('ZREMRANGEBYSCORE', sliding_window_key, 0, window_start)
     -- Calculate valid tokens
-    local valid_token_list = redis.call('ZRANGE', sliding_window_key, 0, -1)
-    local valid_tokens = 0
-    for _, v in ipairs(valid_token_list) do
-        local _, tokens = struct.unpack('Bc0L', v)
-        valid_tokens = valid_tokens + tokens
-    end
+    local valid_tokens = calculate_tokens_in_range(sliding_window_key, '-inf', '+inf')
     -- Update token count
     if current_capacity + released_tokens > max_capacity then -- If current capacity plus released tokens exceeds max capacity, reset to max capacity minus valid tokens
         current_capacity = max_capacity - valid_tokens
@@ -79,7 +91,7 @@ end
 
 -- Calculate prediction error
 local predicted_error = math.abs(actual - estimated)
--- Correction result
+-- Correction result for reservation
 local correct_result = 1
 -- Mainly handle underestimation cases to properly limit actual usage; overestimation may reject requests but won't affect downstream services
 if estimated < actual then -- Underestimation
@@ -94,26 +106,19 @@ if estimated < actual then -- Underestimation
     end
     while predicted_error ~= 0 do -- Distribute to future windows until all error is distributed
         if max_capacity >= predicted_error then
-            local L = compensation_start
-            local R = compensation_start + window_size
-            while L < R do
-                local mid = math.floor((L + R) / 2)
-                local valid_list = redis.call('ZRANGEBYSCORE', sliding_window_key, mid - window_size, mid)
-                local valid_tokens = 0
-                for _, v in ipairs(valid_list) do
-                    local _, tokens = struct.unpack('Bc0L', v)
-                    valid_tokens = valid_tokens + tokens
-                end
-                if valid_tokens + predicted_error <= max_capacity then
-                    R = mid
-                else
-                    L = mid + 1
-                end
+            local compensation_time = binary_search_compensation_time(sliding_window_key, compensation_start,
+                compensation_start + window_size, window_size, max_capacity, predicted_error)
+            if calculate_tokens_in_range(sliding_window_key, compensation_time - window_size, compensation_time) +
+                predicted_error > max_capacity then
+                correct_result = 0 -- If the compensation time exceeds max capacity, return 0 to indicate failure
+                break
             end
-            redis.call('ZADD', sliding_window_key, L, struct.pack('Bc0L', string.len(random_string), random_string, predicted_error))
+            redis.call('ZADD', sliding_window_key, compensation_time,
+                struct.pack('Bc0L', string.len(random_string), random_string, predicted_error))
             predicted_error = 0
         else
-            redis.call('ZADD', sliding_window_key, compensation_start, struct.pack('Bc0L', string.len(random_string), random_string, max_capacity))
+            redis.call('ZADD', sliding_window_key, compensation_start,
+                struct.pack('Bc0L', string.len(random_string), random_string, max_capacity))
             predicted_error = predicted_error - max_capacity
             compensation_start = compensation_start + window_size
         end

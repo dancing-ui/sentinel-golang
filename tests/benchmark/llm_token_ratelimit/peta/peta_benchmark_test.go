@@ -191,10 +191,10 @@ func (p *PETASimulator) Withhold(ctx *context.Context, slidingWindowKey string, 
 		return 0, fmt.Errorf("withhold script returned nil response")
 	}
 	results, ok := response.([]interface{})
-	if !ok || len(results) != 1 {
+	if !ok || len(results) != 2 {
 		return 0, fmt.Errorf("withhold script returned unexpected response format: %v", response)
 	}
-	waitingTime, ok := results[0].(int64)
+	waitingTime, ok := results[1].(int64)
 	if !ok {
 		return 0, fmt.Errorf("withhold script returned unexpected waiting time format: %v", results[0])
 	}

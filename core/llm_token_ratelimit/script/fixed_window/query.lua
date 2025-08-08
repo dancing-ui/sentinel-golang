@@ -11,12 +11,9 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
-
 -- KEYS[1]: Fixed Window Key ("<redisRatelimitKey>")
-
 -- ARGV[1]: Maximum Token capacity
 -- ARGV[2]: Window size (milliseconds)
-
 local fixed_window_key = KEYS[1]
 
 local max_token_capacity = tonumber(ARGV[1])
