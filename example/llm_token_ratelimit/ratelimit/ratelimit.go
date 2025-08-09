@@ -129,6 +129,7 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 		entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(llmTokenRatelimitCtx))
 
 		if err != nil {
+			// Block
 			if options.blockFallback != nil {
 				options.blockFallback(c)
 			} else {
@@ -140,7 +141,6 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			return
 		}
 		// Pass
-		c.Set(llmtokenratelimit.KeyContext, llmTokenRatelimitCtx)
 
 		// Wait for the response to be written
 		c.Next()

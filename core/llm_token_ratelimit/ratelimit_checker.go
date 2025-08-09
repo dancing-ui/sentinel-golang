@@ -115,7 +115,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 
 	promptsValue := ctx.Get(KeyLLMPrompts)
 	if promptsValue == nil {
-		return true
+		promptsValue = "" // allow nil value to be treated as empty string
 	}
 	prompts, ok := promptsValue.(string)
 	if !ok {
@@ -157,7 +157,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		ctx.Set(KeyResponseHeaders, responseHeader)
 		return false
 	}
-	c.setEstimatedToken(rule, int64(estimatedToken))
+	c.cacheEstimatedToken(rule, int64(estimatedToken))
 	return true
 }
 
@@ -179,7 +179,7 @@ func (c *PETAChecker) countEncodingTokens(texts string, encoding TiktokenEncodin
 	return 0, fmt.Errorf("unknown count strategy: %s", strategy.String())
 }
 
-func (c *PETAChecker) setEstimatedToken(rule *MatchedRule, count int64) {
+func (c *PETAChecker) cacheEstimatedToken(rule *MatchedRule, count int64) {
 	if c == nil || rule == nil {
 		return
 	}

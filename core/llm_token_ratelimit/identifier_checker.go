@@ -14,13 +14,20 @@
 
 package llmtokenratelimit
 
-import "github.com/alibaba/sentinel-golang/util"
+import (
+	"github.com/alibaba/sentinel-golang/logging"
+	"github.com/alibaba/sentinel-golang/util"
+)
 
 type AllIdentifierChecker struct{}
 
 func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
-	if f == nil || infos == nil {
+	if f == nil {
 		return false
+	}
+	if infos == nil {
+		logging.Warn("[LLMTokenRateLimit AllIdentifierChecker.Check] RequestInfos is nil")
+		return true // allow nil for global rate limit
 	}
 	for identifierType, checker := range globalRuleMatcher.IdentifierCheckers {
 		if identifierType == AllIdentifier {
@@ -36,8 +43,12 @@ func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier,
 type HeaderChecker struct{}
 
 func (f *HeaderChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
-	if f == nil || infos == nil || infos.Headers == nil {
+	if f == nil {
 		return false
+	}
+	if infos == nil || infos.Headers == nil {
+		logging.Warn("[LLMTokenRateLimit HeaderChecker.Check] RequestInfos is nil")
+		return true // allow nil for global rate limit
 	}
 	for key, values := range infos.Headers {
 		if len(values) == 0 {

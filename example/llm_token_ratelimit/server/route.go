@@ -78,42 +78,7 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		return
 	}
 
-	inputTokens, ok := response.Choices[0].GenerationInfo["PromptTokens"].(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"message": "invalid or missing PromptTokens in response",
-				"type":    "token_info_error",
-			},
-		})
-		return
-	}
-	outputTokens, ok := response.Choices[0].GenerationInfo["CompletionTokens"].(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"message": "invalid or missing CompletionTokens in response",
-				"type":    "token_info_error",
-			},
-		})
-		return
-	}
-	totalTokens, ok := response.Choices[0].GenerationInfo["TotalTokens"].(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"message": "invalid or missing TotalTokens in response",
-				"type":    "token_info_error",
-			},
-		})
-		return
-	}
-
-	usedTokenInfos := llmtokenratelimit.GenerateUsedTokenInfos(
-		llmtokenratelimit.WithInputTokens(inputTokens),
-		llmtokenratelimit.WithOutputTokens(outputTokens),
-		llmtokenratelimit.WithTotalTokens(totalTokens),
-	)
+	usedTokenInfos := llmtokenratelimit.OpenAITokenExtractor(response.Choices[0].GenerationInfo)
 	c.Set(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -121,9 +86,9 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		"timestamp": time.Now().Unix(),
 		"choices":   response.Choices[0].Content,
 		"usage": gin.H{
-			"input_tokens":  inputTokens,
-			"output_tokens": outputTokens,
-			"total_tokens":  totalTokens,
+			"input_tokens":  usedTokenInfos.InputTokens,
+			"output_tokens": usedTokenInfos.OutputTokens,
+			"total_tokens":  usedTokenInfos.TotalTokens,
 		},
 	})
 }

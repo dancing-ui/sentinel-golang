@@ -26,4 +26,4 @@ if ttl < 0 then
     redis.call('SET', fixed_window_key, max_token_capacity - actual, 'PX', window_size)
     return {max_token_capacity - actual, window_size}
 end
-return {redis.call('DECRBY', fixed_window_key, actual), ttl}
+return {tonumber(redis.call('DECRBY', fixed_window_key, actual)), ttl}

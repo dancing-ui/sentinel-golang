@@ -24,4 +24,4 @@ if ttl < 0 then
     redis.call('SET', fixed_window_key, max_token_capacity, 'PX', window_size)
     return {max_token_capacity, window_size}
 end
-return {redis.call('GET', fixed_window_key), ttl}
+return {tonumber(redis.call('GET', fixed_window_key)), ttl}

@@ -117,7 +117,7 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 
 	correctResult := result[0]
 	if correctResult != PETACorrectOK {
-		logging.Warn("PETAUpdater did not update the limit key, because the error ratio too big", "limitKey", rule.LimitKey, "correctResult", correctResult)
+		logging.Warn("[LLMTokenRateLimit PETAUpdater.updateLimitKey] failed to update the limit key", "limitKey", rule.LimitKey, "correctResult", correctResult)
 		return
 	}
 }

@@ -38,10 +38,7 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 		return nil
 	}
 
-	reqInfos := extractRequestInfos(ctx)
-	if reqInfos == nil {
-		return nil
-	}
+	reqInfos := extractRequestInfos(ctx) // allow nil for global rate limit
 
 	ruleMap := make(map[string]*MatchedRule)
 
