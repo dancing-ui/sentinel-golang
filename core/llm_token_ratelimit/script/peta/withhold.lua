@@ -18,6 +18,16 @@
 -- ARGV[3]: Token bucket capacity
 -- ARGV[4]: Window size (milliseconds)
 -- ARGV[5]: Random string for sliding window unique value (length less than or equal to 255)
+local function calculate_tokens_in_range(key, start_time, end_time)
+    local valid_list = redis.call('ZRANGEBYSCORE', key, start_time, end_time)
+    local valid_tokens = 0
+    for _, v in ipairs(valid_list) do
+        local _, tokens = struct.unpack('Bc0L', v)
+        valid_tokens = valid_tokens + tokens
+    end
+    return valid_tokens
+end
+
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
 
@@ -44,23 +54,12 @@ if not current_capacity then -- First request, initialize
         struct.pack('Bc0L', string.len(random_string), random_string, estimated))
 else -- Token bucket already exists
     -- Calculate expired tokens
-    local released_token_list = redis.call('ZRANGEBYSCORE', sliding_window_key, 0, window_start)
-    local released_tokens = 0
-    for _, v in ipairs(released_token_list) do
-        local _, tokens = struct.unpack('Bc0L', v)
-        released_tokens = released_tokens + tokens
-    end
-
+    local released_tokens = calculate_tokens_in_range(sliding_window_key, 0, window_start)
     if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new tokens
         -- Clean up expired data
         redis.call('ZREMRANGEBYSCORE', sliding_window_key, 0, window_start)
         -- Calculate valid tokens
-        local valid_token_list = redis.call('ZRANGE', sliding_window_key, 0, -1)
-        local valid_tokens = 0
-        for _, v in ipairs(valid_token_list) do
-            local _, tokens = struct.unpack('Bc0L', v)
-            valid_tokens = valid_tokens + tokens
-        end
+        local valid_tokens = calculate_tokens_in_range(sliding_window_key, '-inf', '+inf')
         -- Update token count
         if current_capacity + released_tokens > max_capacity then -- If current capacity plus released tokens exceeds max capacity, reset to max capacity minus valid tokens
             current_capacity = max_capacity - valid_tokens
