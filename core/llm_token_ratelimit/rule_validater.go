@@ -42,7 +42,7 @@ func IsValidRule(r *Rule) error {
 
 	// Validate Encoding
 	if err := validateEncoding(r.Encoding); err != nil {
-		return fmt.Errorf("invalid tiktoken encoding: %w", err)
+		return fmt.Errorf("invalid token encoding: %w", err)
 	}
 
 	// Validate RuleItems (required)
@@ -95,13 +95,13 @@ func validateRuleName(ruleName string) error {
 	return nil
 }
 
-func validateEncoding(encoding TiktokenEncoding) error {
-	// Validate TiktokenEncoding
-	switch encoding {
-	case CL100KBase, O200KBase, P50KBase, P50KEdit, R50KBase:
+func validateEncoding(encoding TokenEncoding) error {
+	// Validate TokenEncoding
+	switch encoding.Provider {
+	case OpenAIEncoderProvider:
 		return nil
 	default:
-		return fmt.Errorf("unsupported tiktoken encoding: %s", encoding.String())
+		return fmt.Errorf("unsupported token encoding provider: %v", encoding.Provider.String())
 	}
 }
 

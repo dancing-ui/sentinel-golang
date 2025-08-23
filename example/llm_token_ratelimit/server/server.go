@@ -21,7 +21,6 @@ import (
 	langchaingo "llm_token_ratelimit/langchain-go"
 	"llm_token_ratelimit/ratelimit"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -111,7 +110,7 @@ func NewServer(ip string, port uint16) *Server {
 	engine.Use(corsMiddleware())
 	engine.Use(cacheBodyMiddleware())
 	engine.Use(ratelimit.SentinelMiddleware(
-		ratelimit.WithPromptsExtractor(func(c *gin.Context) string {
+		ratelimit.WithPromptsExtractor(func(c *gin.Context) []string {
 			infos, err := bindJSONFromCache[langchaingo.LLMRequestInfos](c)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -121,13 +120,13 @@ func NewServer(ip string, port uint16) *Server {
 						"type":    "api_error",
 					},
 				})
-				return ""
+				return nil
 			}
-			var builder strings.Builder
+			prompts := make([]string, 0, len(infos.Messages))
 			for _, msg := range infos.Messages {
-				builder.WriteString(msg.Content)
+				prompts = append(prompts, msg.Content)
 			}
-			return builder.String()
+			return prompts
 		}),
 	))
 

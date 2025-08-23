@@ -62,7 +62,7 @@ func InitSentinel() {
 			Resource: "POST:/v1/chat/completion/peta",
 			Strategy: llmtokenratelimit.PETA,
 			RuleName: "rule-peta",
-			Encoding: llmtokenratelimit.O200KBase,
+			Encoding: llmtokenratelimit.TokenEncoding{},
 			RuleItems: []*llmtokenratelimit.RuleItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
@@ -109,7 +109,7 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			reqInfos = options.requestInfosExtract(c)
 		}
 
-		prompts := ""
+		prompts := []string{}
 		if options.promptsExtract != nil {
 			prompts = options.promptsExtract(c)
 		}

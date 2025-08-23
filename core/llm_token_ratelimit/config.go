@@ -23,6 +23,12 @@ import (
 	"github.com/alibaba/sentinel-golang/logging"
 )
 
+type TokenEncoderProvider uint32
+
+const (
+	OpenAIEncoderProvider TokenEncoderProvider = iota
+)
+
 type IdentifierType uint32
 
 const (
@@ -54,15 +60,10 @@ const (
 	PETA
 )
 
-type TiktokenEncoding uint32
-
-const (
-	CL100KBase TiktokenEncoding = iota
-	O200KBase
-	P50KBase
-	P50KEdit
-	R50KBase
-)
+type TokenEncoding struct {
+	Provider TokenEncoderProvider `json:"provider" yaml:"provider"`
+	Model    string               `json:"model" yaml:"model"`
+}
 
 type Identifier struct {
 	Type  IdentifierType `json:"type" yaml:"type"`
@@ -162,6 +163,23 @@ func GetErrorMsg() string {
 	return cfg.ErrorMessage
 }
 
+func (p *TokenEncoderProvider) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if p == nil {
+		return fmt.Errorf("token encoder provider is nil")
+	}
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	switch str {
+	case "openai":
+		*p = OpenAIEncoderProvider
+	default:
+		return fmt.Errorf("unknown token encoder provider: %s", str)
+	}
+	return nil
+}
+
 func (it *IdentifierType) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if it == nil {
 		return fmt.Errorf("identifier type is nil")
@@ -244,29 +262,11 @@ func (s *Strategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (e *TiktokenEncoding) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *TokenEncoding) String() string {
 	if e == nil {
-		return fmt.Errorf("tiktoken encoding is nil")
+		return "TokenEncoding{nil}"
 	}
-	var str string
-	if err := unmarshal(&str); err != nil {
-		return err
-	}
-	switch str {
-	case "cl100k_base":
-		*e = CL100KBase
-	case "o200k_base":
-		*e = O200KBase
-	case "p50k_base":
-		*e = P50KBase
-	case "p50k_edit":
-		*e = P50KEdit
-	case "r50k_base":
-		*e = R50KBase
-	default:
-		return fmt.Errorf("unknown encoding: %s", str)
-	}
-	return nil
+	return fmt.Sprintf("TokenEncoding{Provider:%s, Model:%s}", e.Provider.String(), e.Model)
 }
 
 func (it IdentifierType) String() string {
@@ -319,18 +319,10 @@ func (s Strategy) String() string {
 	}
 }
 
-func (e TiktokenEncoding) String() string {
-	switch e {
-	case CL100KBase:
-		return "cl100k_base"
-	case O200KBase:
-		return "o200k_base"
-	case P50KBase:
-		return "p50k_base"
-	case P50KEdit:
-		return "p50k_edit"
-	case R50KBase:
-		return "r50k_base"
+func (p TokenEncoderProvider) String() string {
+	switch p {
+	case OpenAIEncoderProvider:
+		return "openai"
 	default:
 		return "undefined"
 	}

@@ -29,7 +29,7 @@ type BaseLimitKeyParams struct {
 	TokenSize      int64
 	CountStrategy  CountStrategy
 	// PETA
-	Encoding TiktokenEncoding
+	Encoding TokenEncoding
 }
 type BaseRuleCollector struct{}
 

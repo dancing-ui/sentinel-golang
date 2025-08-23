@@ -25,7 +25,7 @@ type options struct {
 	resourceExtract     func(*gin.Context) string
 	blockFallback       func(*gin.Context)
 	requestInfosExtract func(*gin.Context) *llmtokenratelimit.RequestInfos
-	promptsExtract      func(*gin.Context) string
+	promptsExtract      func(*gin.Context) []string
 }
 
 func WithBlockFallback(fn func(ctx *gin.Context)) Option {
@@ -46,7 +46,7 @@ func WithRequestInfosExtractor(fn func(*gin.Context) *llmtokenratelimit.RequestI
 	}
 }
 
-func WithPromptsExtractor(fn func(*gin.Context) string) Option {
+func WithPromptsExtractor(fn func(*gin.Context) []string) Option {
 	return func(opts *options) {
 		opts.promptsExtract = fn
 	}

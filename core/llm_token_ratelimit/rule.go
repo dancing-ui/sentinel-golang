@@ -22,11 +22,11 @@ import (
 type Rule struct {
 	ID string `json:"id,omitempty" yaml:"id,omitempty"`
 
-	Resource  string           `json:"resource" yaml:"resource"`
-	Strategy  Strategy         `json:"strategy" yaml:"strategy"`
-	RuleName  string           `json:"ruleName" yaml:"ruleName"`
-	Encoding  TiktokenEncoding `json:"encoding" yaml:"encoding"`
-	RuleItems []*RuleItem      `json:"ruleItems" yaml:"ruleItems"`
+	Resource  string        `json:"resource" yaml:"resource"`
+	Strategy  Strategy      `json:"strategy" yaml:"strategy"`
+	RuleName  string        `json:"ruleName" yaml:"ruleName"`
+	Encoding  TokenEncoding `json:"encoding" yaml:"encoding"`
+	RuleItems []*RuleItem   `json:"ruleItems" yaml:"ruleItems"`
 }
 
 func (r *Rule) ResourceName() string {
@@ -48,7 +48,8 @@ func (r *Rule) String() string {
 
 	sb.WriteString(fmt.Sprintf("Resource:%s, ", r.Resource))
 	sb.WriteString(fmt.Sprintf("Strategy:%s, ", r.Strategy.String()))
-	sb.WriteString(fmt.Sprintf("RuleName:%s", r.RuleName))
+	sb.WriteString(fmt.Sprintf("RuleName:%s, ", r.RuleName))
+	sb.WriteString(fmt.Sprintf("Encoding:%s", r.Encoding.String()))
 
 	if len(r.RuleItems) > 0 {
 		sb.WriteString(", RuleItems:[")
@@ -71,6 +72,10 @@ func (r *Rule) String() string {
 func (r *Rule) setDefaultRuleOption() {
 	if len(r.Resource) == 0 {
 		r.Resource = DefaultResourcePattern
+	}
+
+	if len(r.Encoding.Model) == 0 {
+		r.Encoding.Model = DefaultTokenEncodingModel[r.Encoding.Provider]
 	}
 
 	for idx1, ruleItem := range r.RuleItems {

@@ -21,11 +21,16 @@ func FilterRules(rules []*Rule) []*Rule {
 		logging.Warn("[LLMTokenRateLimit FilterRules] No rules to filter, returning empty slice")
 		return []*Rule{}
 	}
+	var copiedRules = make([]*Rule, len(rules))
+	if err := deepCopyByJSON(rules, &copiedRules); err != nil {
+		logging.Warn("[LLMTokenRateLimit FilterRules] Failed to deep copy rules, returning empty slice", "error", err.Error())
+		return []*Rule{}
+	}
 	// 1. First, filter out invalid rules
 	// 2. Retain the latest rule corresponding to each unique rule-name
 	// 3. For each individual rule, retain the latest keyItems, so the ruleItem is unique
-	ruleMap := make(map[string]*Rule)
-	for _, rule := range rules {
+	ruleMap := make(map[string]*Rule, 16)
+	for _, rule := range copiedRules {
 		if rule == nil {
 			continue
 		}

@@ -27,7 +27,7 @@ type MatchedRule struct {
 	TokenSize     int64
 	CountStrategy CountStrategy
 	// PETA
-	Encoding       TiktokenEncoding
+	Encoding       TokenEncoding
 	EstimatedToken int64
 }
 

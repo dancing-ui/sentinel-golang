@@ -404,10 +404,83 @@ func TestHotSpotParamRuleJsonArrayParser(t *testing.T) {
 		for _, r := range rules {
 			fmt.Println(r)
 		}
-		assert.True(t, strings.Contains(rules[0].String(), "Resource:abc, MetricType:Concurrency, ControlBehavior:Reject, ParamIndex:0, ParamKey:, Threshold:1000, MaxQueueingTimeMs:1, BurstCount:10, DurationInSec:1, ParamsMaxCapacity:10000, SpecificItems:map[true:10003 1000:10001 ximu:10002]"))
-		assert.True(t, strings.Contains(rules[1].String(), "Resource:abc, MetricType:Concurrency, ControlBehavior:Throttling, ParamIndex:1, ParamKey:, Threshold:2000, MaxQueueingTimeMs:2, BurstCount:20, DurationInSec:2, ParamsMaxCapacity:20000, SpecificItems:map[true:20003 1000:20001 ximu:20002"))
-		assert.True(t, strings.Contains(rules[2].String(), "Resource:abc, MetricType:QPS, ControlBehavior:Reject, ParamIndex:2, ParamKey:, Threshold:3000, MaxQueueingTimeMs:3, BurstCount:30, DurationInSec:3, ParamsMaxCapacity:30000, SpecificItems:map[true:30003 1000:30001 ximu:30002"))
-		assert.True(t, strings.Contains(rules[3].String(), "Resource:abc, MetricType:QPS, ControlBehavior:Throttling, ParamIndex:3, ParamKey:, Threshold:4000, MaxQueueingTimeMs:4, BurstCount:40, DurationInSec:4, ParamsMaxCapacity:40000, SpecificItems:map[true:40003 1000:40001 ximu:40002"))
+
+		expectedRule0 := &hotspot.Rule{
+			Resource:          "abc",
+			MetricType:        hotspot.Concurrency,
+			ControlBehavior:   hotspot.Reject,
+			ParamIndex:        0,
+			ParamKey:          "",
+			Threshold:         1000,
+			MaxQueueingTimeMs: 1,
+			BurstCount:        10,
+			DurationInSec:     1,
+			ParamsMaxCapacity: 10000,
+			SpecificItems: map[interface{}]int64{
+				true:   10003,
+				1000:   10001,
+				"ximu": 10002,
+			},
+		}
+
+		expectedRule1 := &hotspot.Rule{
+			Resource:          "abc",
+			MetricType:        hotspot.Concurrency,
+			ControlBehavior:   hotspot.Throttling,
+			ParamIndex:        1,
+			ParamKey:          "",
+			Threshold:         2000,
+			MaxQueueingTimeMs: 2,
+			BurstCount:        20,
+			DurationInSec:     2,
+			ParamsMaxCapacity: 20000,
+			SpecificItems: map[interface{}]int64{
+				true:   20003,
+				1000:   20001,
+				"ximu": 20002,
+			},
+		}
+
+		expectedRule2 := &hotspot.Rule{
+			Resource:          "abc",
+			MetricType:        hotspot.QPS,
+			ControlBehavior:   hotspot.Reject,
+			ParamIndex:        2,
+			ParamKey:          "",
+			Threshold:         3000,
+			MaxQueueingTimeMs: 3,
+			BurstCount:        30,
+			DurationInSec:     3,
+			ParamsMaxCapacity: 30000,
+			SpecificItems: map[interface{}]int64{
+				true:   30003,
+				1000:   30001,
+				"ximu": 30002,
+			},
+		}
+
+		expectedRule3 := &hotspot.Rule{
+			Resource:          "abc",
+			MetricType:        hotspot.QPS,
+			ControlBehavior:   hotspot.Throttling,
+			ParamIndex:        3,
+			ParamKey:          "",
+			Threshold:         4000,
+			MaxQueueingTimeMs: 4,
+			BurstCount:        40,
+			DurationInSec:     4,
+			ParamsMaxCapacity: 40000,
+			SpecificItems: map[interface{}]int64{
+				true:   40003,
+				1000:   40001,
+				"ximu": 40002,
+			},
+		}
+
+		assert.True(t, reflect.DeepEqual(rules[0], expectedRule0))
+		assert.True(t, reflect.DeepEqual(rules[1], expectedRule1))
+		assert.True(t, reflect.DeepEqual(rules[2], expectedRule2))
+		assert.True(t, reflect.DeepEqual(rules[3], expectedRule3))
 	})
 
 	t.Run("TestHotSpotParamRuleJsonArrayParser_Nil", func(t *testing.T) {

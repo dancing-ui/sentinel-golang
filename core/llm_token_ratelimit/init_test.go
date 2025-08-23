@@ -77,7 +77,7 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 				cfg := config.GetConfig()
 				// Basic validation - should not panic or return corrupted data
 				if cfg != nil {
-					if cfg.Rules != nil && len(cfg.Rules) > 0 {
+					if len(cfg.Rules) > 0 {
 						_ = cfg.Rules[0].ID // Access should not cause data race
 					}
 					if cfg.Redis != nil {
@@ -160,7 +160,7 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 		}
 	}()
 
-	const numGoroutines = 50
+	const numGoroutines = 5000
 	var wg sync.WaitGroup
 	errors := make(chan error, numGoroutines)
 
@@ -221,7 +221,7 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 				// Basic validation
 				_ = cfg.ErrorCode
 				_ = cfg.ErrorMessage
-				if cfg.Rules != nil && len(cfg.Rules) > 0 {
+				if len(cfg.Rules) > 0 {
 					_ = cfg.Rules[0].ID
 				}
 			}
@@ -389,7 +389,7 @@ func TestSafeConfig_DataIntegrity(t *testing.T) {
 					}
 
 					// Validate rules consistency
-					if cfg.Rules != nil && len(cfg.Rules) > 0 {
+					if len(cfg.Rules) > 0 {
 						expectedRuleID := fmt.Sprintf("rule-%d", cfg.ErrorCode)
 						if cfg.Rules[0].ID != expectedRuleID {
 							errors <- fmt.Errorf("rule data corruption detected by reader %d: ErrorCode=%d, RuleID=%s",

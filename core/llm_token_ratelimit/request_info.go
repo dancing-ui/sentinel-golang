@@ -29,7 +29,9 @@ func WithHeader(headers map[string][]string) RequestInfo {
 func GenerateRequestInfos(ri ...RequestInfo) *RequestInfos {
 	infos := new(RequestInfos)
 	for _, info := range ri {
-		info(infos)
+		if info != nil {
+			info(infos)
+		}
 	}
 	return infos
 }

@@ -43,7 +43,9 @@ func WithTotalTokens(totalTokens int) UsedTokenInfo {
 func GenerateUsedTokenInfos(uti ...UsedTokenInfo) *UsedTokenInfos {
 	infos := new(UsedTokenInfos)
 	for _, info := range uti {
-		info(infos)
+		if info != nil {
+			info(infos)
+		}
 	}
 	return infos
 }

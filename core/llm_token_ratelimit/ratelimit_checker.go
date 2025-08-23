@@ -23,7 +23,6 @@ import (
 
 	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/alibaba/sentinel-golang/util"
-	"github.com/pkoukk/tiktoken-go"
 )
 
 // ================================= FixedWindowChecker ====================================
@@ -115,16 +114,18 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 
 	promptsValue := ctx.Get(KeyLLMPrompts)
 	if promptsValue == nil {
-		promptsValue = "" // allow nil value to be treated as empty string
+		logging.Warn("KeyLLMPrompts is nil, using empty string array")
+		promptsValue = []string{} // allow nil value to be treated as empty string array
 	}
-	prompts, ok := promptsValue.(string)
+	prompts, ok := promptsValue.([]string)
 	if !ok {
-		return true
+		logging.Warn("invalid type for KeyLLMPrompts, expected []string", "type", fmt.Sprintf("%T", promptsValue))
+		prompts = []string{} // fallback to empty string array if type assertion fails
 	}
 
-	estimatedToken, err := c.countEncodingTokens(prompts, rule.Encoding, rule.CountStrategy)
+	estimatedToken, err := c.countTokens(prompts, rule.Encoding, rule.CountStrategy)
 	if err != nil {
-		logging.Error(err, "failed to withhold tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()")
+		logging.Error(err, "failed to count tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()")
 		return true
 	}
 
@@ -161,7 +162,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 	return true
 }
 
-func (c *PETAChecker) countEncodingTokens(texts string, encoding TiktokenEncoding, strategy CountStrategy) (int, error) {
+func (c *PETAChecker) countTokens(prompts []string, encoding TokenEncoding, strategy CountStrategy) (int, error) {
 	if c == nil {
 		return 0, fmt.Errorf("PETAChecker is nil")
 	}
@@ -170,11 +171,15 @@ func (c *PETAChecker) countEncodingTokens(texts string, encoding TiktokenEncodin
 	case OutputTokens: // cannot predict output tokens
 		return 0, nil
 	case InputTokens, TotalTokens:
-		tke, err := tiktoken.GetEncoding(encoding.String())
-		if err != nil {
-			return 0, fmt.Errorf("getEncoding: %v", err)
+		encoder := GetTokenEncoder(encoding)
+		if encoder == nil {
+			return 0, fmt.Errorf("failed to get token encoder for encoding")
 		}
-		return len(tke.Encode(texts, nil, nil)), nil
+		length, err := encoder.CountTokens(prompts)
+		if err != nil {
+			return 0, fmt.Errorf("failed to count tokens: %v", err)
+		}
+		return length, nil
 	}
 	return 0, fmt.Errorf("unknown count strategy: %s", strategy.String())
 }

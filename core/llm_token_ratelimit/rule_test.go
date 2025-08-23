@@ -220,6 +220,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 		{
 			"empty rule gets all defaults",
 			&Rule{
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier},
@@ -235,6 +239,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: DefaultResourcePattern,
 				RuleName: DefaultRuleName,
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier, Value: DefaultIdentifierValuePattern},
@@ -253,6 +261,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			"partial defaults applied",
 			&Rule{
 				Resource: "/custom/api",
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "custom-header"},
@@ -268,6 +280,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: "/custom/api",
 				RuleName: "", // Not set because not all defaults
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "custom-header"},
@@ -287,6 +303,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: "/api/custom",
 				RuleName: "custom-rule",
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "api-key"},
@@ -303,6 +323,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: "/api/custom",
 				RuleName: "custom-rule",
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "api-key"},
@@ -320,6 +344,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 		{
 			"multiple rule items",
 			&Rule{
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier},
@@ -345,6 +373,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: DefaultResourcePattern,
 				RuleName: "overall-rule",
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier, Value: DefaultIdentifierValuePattern},
@@ -372,6 +404,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 		{
 			"multiple key items",
 			&Rule{
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier},
@@ -392,6 +428,10 @@ func TestRule_setDefaultRuleOption(t *testing.T) {
 			&Rule{
 				Resource: DefaultResourcePattern,
 				RuleName: "overall-rule",
+				Encoding: TokenEncoding{
+					Provider: OpenAIEncoderProvider,
+					Model:    DefaultTokenEncodingModel[OpenAIEncoderProvider],
+				},
 				RuleItems: []*RuleItem{
 					{
 						Identifier: Identifier{Type: AllIdentifier, Value: DefaultIdentifierValuePattern},
@@ -556,6 +596,7 @@ func deepCopyRule(original *Rule) *Rule {
 		Resource: original.Resource,
 		Strategy: original.Strategy,
 		RuleName: original.RuleName,
+		Encoding: original.Encoding,
 	}
 
 	if original.RuleItems != nil {

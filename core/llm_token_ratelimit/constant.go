@@ -32,6 +32,10 @@ const (
 	DefaultErrorMessage string = "Too Many Requests"
 )
 
+var DefaultTokenEncodingModel = map[TokenEncoderProvider]string{
+	OpenAIEncoderProvider: "gpt-4",
+}
+
 // ================================= CommonError ==============================
 const (
 	ErrorTimeDuration int64 = -1
@@ -75,6 +79,11 @@ const (
 	RandomLetterIdxBits = 6
 	RandomLetterIdxMask = 1<<RandomLetterIdxBits - 1
 	RandomLetterIdxMax  = 63 / RandomLetterIdxBits
+)
+
+// ================================= OpenAIEncoder ============================
+const (
+	OpenAIDelimiterConsumption int = 4
 )
 
 // ================================= RedisKeyForbiddenChars ===================
