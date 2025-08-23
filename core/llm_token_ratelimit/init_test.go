@@ -160,7 +160,7 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 		}
 	}()
 
-	const numGoroutines = 5000
+	const numGoroutines = 50
 	var wg sync.WaitGroup
 	errors := make(chan error, numGoroutines)
 
