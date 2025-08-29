@@ -23,12 +23,12 @@ import (
 type MatchedRule struct {
 	Strategy      Strategy
 	LimitKey      string
-	TimeWindow    int64 // Seconds
+	TimeWindow    int64 // seconds
 	TokenSize     int64
 	CountStrategy CountStrategy
 	// PETA
 	Encoding       TokenEncoding
-	EstimatedToken int64
+	EstimatedToken int
 }
 
 type MatchedRuleCollector interface {

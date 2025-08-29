@@ -15,17 +15,22 @@
 package llmtokenratelimit
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 
 	"github.com/alibaba/sentinel-golang/logging"
+	"github.com/go-redis/redis/v7"
 	"github.com/pkoukk/tiktoken-go"
 )
 
 // ================================= TokenEncoder ====================================
 
+//go:embed script/token_encoder/update.lua
+var globalTokenEncoderUpdateScript string
+
 type TokenEncoder interface {
-	CountTokens(prompts []string) (int, error)
+	CountTokens(prompts []string, rule *MatchedRule) (int, error)
 }
 
 func GetTokenEncoder(encoding TokenEncoding) TokenEncoder {
@@ -62,9 +67,12 @@ func NewOpenAIEncoder(encoding TokenEncoding) *OpenAIEncoder {
 	}
 }
 
-func (e *OpenAIEncoder) CountTokens(prompts []string) (int, error) {
+func (e *OpenAIEncoder) CountTokens(prompts []string, rule *MatchedRule) (int, error) {
+	if e == nil {
+		return 0, fmt.Errorf("OpenAIEncoder is nil")
+	}
 	if e.Encoder == nil {
-		return 0, fmt.Errorf("encoder is nil for model: %s", e.Model)
+		return 0, fmt.Errorf("OpenAIEncoder's encoder is nil for model: %s", e.Model)
 	}
 	if len(prompts) == 0 {
 		return 0, nil // No prompts to count tokens
@@ -76,8 +84,30 @@ func (e *OpenAIEncoder) CountTokens(prompts []string) (int, error) {
 	}
 	token := e.Encoder.Encode(builder.String(), nil, nil)
 	if len(token) > 0 {
-		return len(token) + len(prompts)*OpenAIDelimiterConsumption, nil
+		difference, err := e.queryDifference(rule)
+		if err != nil {
+			return 0, err
+		}
+		return len(token) + difference, nil
 	}
-	logging.Warn("no tokens found for prompts")
 	return 0, nil
+}
+
+func (e *OpenAIEncoder) queryDifference(rule *MatchedRule) (int, error) {
+	if e == nil {
+		return 0, fmt.Errorf("OpenAIEncoder is nil")
+	}
+	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, OpenAIEncoderProvider.String(), e.Model)
+	response, err := globalRedisClient.Get(key)
+	if err != nil {
+		return 0, err
+	}
+	value, err := response.Int()
+	if err != nil {
+		if err == redis.Nil {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return value, nil
 }

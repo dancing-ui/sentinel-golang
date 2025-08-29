@@ -123,14 +123,14 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		prompts = []string{} // fallback to empty string array if type assertion fails
 	}
 
-	estimatedToken, err := c.countTokens(prompts, rule.Encoding, rule.CountStrategy)
+	estimatedToken, err := c.countTokens(prompts, rule)
 	if err != nil {
 		logging.Error(err, "failed to count tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()")
 		return true
 	}
 
-	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, rule.LimitKey)
-	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, rule.LimitKey)
+	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
+	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 
 	keys := []string{slidingWindowKey, tokenBucketKey}
 	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
@@ -158,33 +158,33 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		ctx.Set(KeyResponseHeaders, responseHeader)
 		return false
 	}
-	c.cacheEstimatedToken(rule, int64(estimatedToken))
+	c.cacheEstimatedToken(rule, estimatedToken)
 	return true
 }
 
-func (c *PETAChecker) countTokens(prompts []string, encoding TokenEncoding, strategy CountStrategy) (int, error) {
+func (c *PETAChecker) countTokens(prompts []string, rule *MatchedRule) (int, error) {
 	if c == nil {
 		return 0, fmt.Errorf("PETAChecker is nil")
 	}
 
-	switch strategy {
+	switch rule.CountStrategy {
 	case OutputTokens: // cannot predict output tokens
 		return 0, nil
 	case InputTokens, TotalTokens:
-		encoder := GetTokenEncoder(encoding)
+		encoder := GetTokenEncoder(rule.Encoding)
 		if encoder == nil {
 			return 0, fmt.Errorf("failed to get token encoder for encoding")
 		}
-		length, err := encoder.CountTokens(prompts)
+		length, err := encoder.CountTokens(prompts, rule)
 		if err != nil {
 			return 0, fmt.Errorf("failed to count tokens: %v", err)
 		}
 		return length, nil
 	}
-	return 0, fmt.Errorf("unknown count strategy: %s", strategy.String())
+	return 0, fmt.Errorf("unknown count strategy: %s", rule.CountStrategy.String())
 }
 
-func (c *PETAChecker) cacheEstimatedToken(rule *MatchedRule, count int64) {
+func (c *PETAChecker) cacheEstimatedToken(rule *MatchedRule, count int) {
 	if c == nil || rule == nil {
 		return
 	}

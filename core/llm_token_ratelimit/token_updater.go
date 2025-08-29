@@ -99,8 +99,8 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	}
 	actualToken := calculator.Calculate(ctx, infos)
 
-	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, rule.LimitKey)
-	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, rule.LimitKey)
+	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
+	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 
 	keys := []string{slidingWindowKey, tokenBucketKey}
 	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
@@ -118,6 +118,23 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	correctResult := result[0]
 	if correctResult != PETACorrectOK {
 		logging.Warn("[LLMTokenRateLimit PETAUpdater.updateLimitKey] failed to update the limit key", "limitKey", rule.LimitKey, "correctResult", correctResult)
+		return
+	}
+	u.updateDifference(rule, actualToken-rule.EstimatedToken, rule.TimeWindow)
+}
+
+func (u *PETAUpdater) updateDifference(rule *MatchedRule, difference int, expiration int64) {
+	if u == nil {
+		return
+	}
+	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, rule.Encoding.Provider.String(), rule.Encoding.Model)
+
+	keys := []string{key}
+	args := []interface{}{difference, expiration}
+
+	_, err := globalRedisClient.Eval(globalTokenEncoderUpdateScript, keys, args...)
+	if err != nil {
+		logging.Error(err, "failed to update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()", "key", key, "difference", difference)
 		return
 	}
 }

@@ -43,7 +43,10 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 
 	serviceName := cfg.ServiceName
 	servicePort := cfg.ServicePort
-	timeout := time.Duration(cfg.Timeout) * time.Millisecond
+	dialTimeout := time.Duration(cfg.DialTimeout) * time.Millisecond
+	readTimeout := time.Duration(cfg.ReadTimeout) * time.Millisecond
+	writeTimeout := time.Duration(cfg.WriteTimeout) * time.Millisecond
+	poolTimeout := time.Duration(cfg.PoolTimeout) * time.Millisecond
 	poolSize := cfg.PoolSize
 	minIdleConns := cfg.MinIdleConns
 	maxRetries := cfg.MaxRetries
@@ -54,8 +57,17 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 	if servicePort == 0 {
 		servicePort = DefaultRedisServicePort
 	}
-	if timeout == 0 {
-		timeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
+	if dialTimeout == 0 {
+		dialTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
+	}
+	if readTimeout == 0 {
+		readTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
+	}
+	if writeTimeout == 0 {
+		writeTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
+	}
+	if poolTimeout == 0 {
+		poolTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
 	}
 	if poolSize == 0 {
 		poolSize = DefaultRedisPoolSize
@@ -76,10 +88,10 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 			Username: cfg.Username,
 			Password: cfg.Password,
 
-			DialTimeout:  timeout,
-			ReadTimeout:  timeout,
-			WriteTimeout: timeout,
-			PoolTimeout:  timeout,
+			DialTimeout:  dialTimeout,
+			ReadTimeout:  readTimeout,
+			WriteTimeout: writeTimeout,
+			PoolTimeout:  poolTimeout,
 
 			PoolSize:     int(poolSize),
 			MinIdleConns: int(minIdleConns),
@@ -111,6 +123,47 @@ func (c *SafeRedisClient) Eval(script string, keys []string, args ...interface{}
 	}
 
 	return c.client.Eval(script, keys, args...).Result()
+}
+
+func (c *SafeRedisClient) Set(key string, value interface{}, expiration time.Duration) error {
+	if c == nil {
+		return fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.client == nil {
+		return fmt.Errorf("redis client is not initialized")
+	}
+
+	return c.client.Set(key, value, expiration).Err()
+}
+
+func (c *SafeRedisClient) Get(key string) (*redis.StringCmd, error) {
+	if c == nil {
+		return nil, fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.client == nil {
+		return nil, fmt.Errorf("redis client is not initialized")
+	}
+
+	return c.client.Get(key), nil
+}
+
+func (c *SafeRedisClient) Close() error {
+	if c == nil {
+		return fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.client != nil {
+		return c.client.Close()
+	}
+	return nil
 }
 
 func (c *SafeRedisClient) updateClient(newClient *redis.ClusterClient) error {

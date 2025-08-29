@@ -191,7 +191,10 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 			Redis: &Redis{
 				ServiceName:  "localhost",
 				ServicePort:  6379,
-				Timeout:      5000,
+				DialTimeout:  5000,
+				ReadTimeout:  5000,
+				WriteTimeout: 5000,
+				PoolTimeout:  5000,
 				PoolSize:     10,
 				MinIdleConns: 5,
 				MaxRetries:   3,

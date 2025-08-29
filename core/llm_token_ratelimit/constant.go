@@ -16,6 +16,7 @@ package llmtokenratelimit
 
 // ================================= Config ====================================
 const (
+	DefaultResource               string = "default-resource"
 	DefaultResourcePattern        string = ".*"
 	DefaultRuleName               string = "overall-rule"
 	DefaultIdentifierValuePattern string = ".*"
@@ -23,7 +24,7 @@ const (
 
 	DefaultRedisServiceName  string = "127.0.0.1"
 	DefaultRedisServicePort  int32  = 6379
-	DefaultRedisTimeout      int32  = 1000
+	DefaultRedisTimeout      int32  = 0 // milliseconds
 	DefaultRedisPoolSize     int32  = 10
 	DefaultRedisMinIdleConns int32  = 5
 	DefaultRedisMaxRetries   int32  = 3
@@ -68,8 +69,8 @@ const (
 const (
 	PETANoWaiting              int64  = 0
 	PETACorrectOK              int64  = 1
-	PETASlidingWindowKeyFormat string = "{peta-hashtag}:sliding-window:%s" // redisRatelimitKey
-	PETATokenBucketKeyFormat   string = "{peta-hashtag}:token-bucket:%s"   // redisRatelimitKey
+	PETASlidingWindowKeyFormat string = "{shard-%s}:sliding-window:%s" // hashTag, redisRatelimitKey
+	PETATokenBucketKeyFormat   string = "{shard-%s}:token-bucket:%s"   // hashTag, redisRatelimitKey
 	PETARandomStringLength     int    = 16
 )
 
@@ -83,7 +84,7 @@ const (
 
 // ================================= OpenAIEncoder ============================
 const (
-	OpenAIDelimiterConsumption int = 4
+	TokenEncoderKeyFormat string = "%s:token-encoder:%s:%s" // redisRatelimitKey, provider, model
 )
 
 // ================================= RedisKeyForbiddenChars ===================

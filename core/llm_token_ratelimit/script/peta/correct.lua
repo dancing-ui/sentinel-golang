@@ -11,8 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
--- KEYS[1]: Sliding Window Key ("{peta-v<x>}:sliding-window:<redisRatelimitKey>")
--- KEYS[2]: Token Bucket Key ("{peta-v<x>}:token-bucket:<redisRatelimitKey>")
+-- KEYS[1]: Sliding Window Key ("{shard-<hashtag>}:sliding-window:<redisRatelimitKey>")
+-- KEYS[2]: Token Bucket Key ("{shard-<hashtag>}:token-bucket:<redisRatelimitKey>")
 -- ARGV[1]: Estimated token consumption
 -- ARGV[2]: Current timestamp (milliseconds)
 -- ARGV[3]: Token bucket capacity
@@ -70,10 +70,8 @@ if not current_capacity then
     redis.call('ZADD', sliding_window_key, current_timestamp,
         struct.pack('Bc0L', string.len(random_string), random_string, 0))
 end
-
 -- Calculate expired tokens
 local released_tokens = calculate_tokens_in_range(sliding_window_key, 0, window_start)
-
 if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new tokens
     -- Clean up expired data
     redis.call('ZREMRANGEBYSCORE', sliding_window_key, 0, window_start)

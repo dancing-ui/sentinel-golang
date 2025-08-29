@@ -78,7 +78,17 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		return
 	}
 
-	usedTokenInfos := llmtokenratelimit.OpenAITokenExtractor(response.Choices[0].GenerationInfo)
+	usedTokenInfos, err := llmtokenratelimit.OpenAITokenExtractor(response.Choices[0].GenerationInfo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": "failed to extract token usage info",
+				"details": err.Error(),
+				"type":    "extraction_error",
+			},
+		})
+		return
+	}
 	c.Set(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
 
 	c.JSON(http.StatusOK, gin.H{

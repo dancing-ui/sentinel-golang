@@ -14,34 +14,36 @@
 
 package llmtokenratelimit
 
+import "fmt"
+
 // ================================= OpenAITokenExtractor ==============================
 
-func OpenAITokenExtractor(response interface{}) *UsedTokenInfos {
+func OpenAITokenExtractor(response interface{}) (*UsedTokenInfos, error) {
 	if response == nil {
-		return nil
+		return nil, fmt.Errorf("response is nil")
 	}
 
 	resp, ok := response.(map[string]any)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("response is not map[string]any")
 	}
 
 	inputTokens, ok := resp["PromptTokens"].(int)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("PromptTokens not found or not int")
 	}
 	outputTokens, ok := resp["CompletionTokens"].(int)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("CompletionTokens not found or not int")
 	}
 	totalTokens, ok := resp["TotalTokens"].(int)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("TotalTokens not found or not int")
 	}
 
 	return GenerateUsedTokenInfos(
 		WithInputTokens(inputTokens),
 		WithOutputTokens(outputTokens),
 		WithTotalTokens(totalTokens),
-	)
+	), nil
 }

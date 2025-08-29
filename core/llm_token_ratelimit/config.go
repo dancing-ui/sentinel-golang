@@ -97,7 +97,11 @@ type Redis struct {
 	Username    string `json:"username" yaml:"username"`
 	Password    string `json:"password" yaml:"password"`
 
-	Timeout      int32 `json:"timeout" yaml:"timeout"`
+	DialTimeout  int32 `json:"dialTimeout" yaml:"dialTimeout"`
+	ReadTimeout  int32 `json:"readTimeout" yaml:"readTimeout"`
+	WriteTimeout int32 `json:"writeTimeout" yaml:"writeTimeout"`
+	PoolTimeout  int32 `json:"poolTimeout" yaml:"poolTimeout"`
+
 	PoolSize     int32 `json:"poolSize" yaml:"poolSize"`
 	MinIdleConns int32 `json:"minIdleConns" yaml:"minIdleConns"`
 	MaxRetries   int32 `json:"maxRetries" yaml:"maxRetries"`

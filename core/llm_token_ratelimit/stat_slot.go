@@ -42,7 +42,7 @@ func (c *LLMTokenRatelimitStatSlot) OnEntryBlocked(_ *base.EntryContext, _ *base
 }
 
 func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
-	llmTokenRatelimitCtx := extractContextFromData(ctx)
+	llmTokenRatelimitCtx := extractContextFromArgs(ctx)
 	if llmTokenRatelimitCtx == nil {
 		return
 	}
