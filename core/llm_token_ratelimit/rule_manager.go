@@ -17,6 +17,7 @@ package llmtokenratelimit
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/alibaba/sentinel-golang/logging"
@@ -46,7 +47,7 @@ func LoadRules(rules []*Rule) (bool, error) {
 	defer updateRuleMux.Unlock()
 	isEqual := reflect.DeepEqual(currentRules, resRulesMap)
 	if isEqual {
-		logging.Info("[LLMTokenRateLimit] Load rules is the same with current rules, so ignore load operation.")
+		logging.Info("[LLMTokenRateLimit] load rules is the same with current rules, so ignore load operation")
 		return false, nil
 	}
 	err := onRuleUpdate(resRulesMap)
@@ -67,7 +68,9 @@ func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 	rwMux.Unlock()
 	currentRules = rawResRulesMap
 
-	logging.Debug("[LLMTokenRateLimit onRuleUpdate] Time statistic(ns) for updating llm_token_ratelimit rule", "timeCost", util.CurrentTimeNano()-start)
+	logging.Debug("[LLMTokenRateLimit] time statistic(ns) for updating llm_token_ratelimit rule",
+		"timeCost", util.CurrentTimeNano()-start,
+	)
 	logRuleUpdate(validResRulesMap)
 	return nil
 }
@@ -85,13 +88,15 @@ func LoadRulesOfResource(res string, rules []*Rule) (bool, error) {
 		rwMux.Lock()
 		delete(ruleMap, res)
 		rwMux.Unlock()
-		logging.Info("[LLMTokenRateLimit] clear resource level rules", "resource", res)
+		logging.Info("[LLMTokenRateLimit] clear resource level rules",
+			"resource", res,
+		)
 		return true, nil
 	}
 
 	isEqual := reflect.DeepEqual(currentRules[res], filteredRules)
 	if isEqual {
-		logging.Info("[LLMTokenRateLimit] Load resource level rules is the same with current resource level rules, so ignore load operation.")
+		logging.Info("[LLMTokenRateLimit] load resource level rules is the same with current resource level rules, so ignore load operation")
 		return false, nil
 	}
 
@@ -109,8 +114,13 @@ func onResourceRuleUpdate(res string, rawResRules []*Rule) (err error) {
 	}
 	rwMux.Unlock()
 	currentRules[res] = rawResRules
-	logging.Debug("[LLMTokenRateLimit onResourceRuleUpdate] Time statistic(ns) for updating llm_token_ratelimit rule", "timeCost", util.CurrentTimeNano()-start)
-	logging.Info("[LLMTokenRateLimit] load resource level rules", "resource", res, "filteredRules", rawResRules)
+	logging.Debug("[LLMTokenRateLimit] time statistic(ns) for updating llm_token_ratelimit rule",
+		"timeCost", util.CurrentTimeNano()-start,
+	)
+	logging.Info("[LLMTokenRateLimit] load resource level rules",
+		"resource", res,
+		"filteredRules", rawResRules,
+	)
 	return nil
 }
 
@@ -184,8 +194,14 @@ func rulesFrom(m map[string][]*Rule) []*Rule {
 func logRuleUpdate(m map[string][]*Rule) {
 	rs := rulesFrom(m)
 	if len(rs) == 0 {
-		logging.Info("[LLMTokenRateLimitRuleManager] LLMTokenRateLimit rules were cleared")
+		logging.Info("[LLMTokenRateLimit] rules were cleared")
 	} else {
-		logging.Info("[LLMTokenRateLimitRuleManager] LLMTokenRateLimit rules were loaded", "rules", rs)
+		var builder strings.Builder
+		for _, r := range rs {
+			builder.WriteString(r.String())
+		}
+		logging.Info("[LLMTokenRateLimit] rules were loaded",
+			"rules", builder.String(),
+		)
 	}
 }

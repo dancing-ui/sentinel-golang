@@ -22,9 +22,9 @@ import (
 )
 
 type BaseLimitKeyParams struct {
+	Resource       string
 	Strategy       Strategy
 	IdentifierType IdentifierType
-	RuleName       string
 	TimeWindow     int64
 	TokenSize      int64
 	CountStrategy  CountStrategy
@@ -34,7 +34,7 @@ type BaseLimitKeyParams struct {
 type BaseRuleCollector struct{}
 
 func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
-	if c == nil || rule == nil || rule.RuleItems == nil {
+	if c == nil || rule == nil || rule.SpecificItems == nil {
 		return nil
 	}
 
@@ -42,37 +42,44 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 
 	ruleMap := make(map[string]*MatchedRule)
 
-	for _, ruleItem := range rule.RuleItems {
-		identifierChecker := globalRuleMatcher.getIdentifierChecker(ruleItem.Identifier.Type)
+	for _, specificItem := range rule.SpecificItems {
+		identifierChecker := globalRuleMatcher.getIdentifierChecker(specificItem.Identifier.Type)
 		if identifierChecker == nil {
-			logging.Error(errors.New("unknown identifier.type"), "unknown identifier.type in llm_token_ratelimit.BaseRuleCollector.Collect()", "identifier.type", ruleItem.Identifier.Type.String())
+			logging.Error(errors.New("unknown identifier.type"),
+				"unknown identifier.type in llm_token_ratelimit.BaseRuleCollector.Collect()",
+				"identifier.type", specificItem.Identifier.Type.String(),
+				"requestID", ctx.Get(KeyRequestID),
+			)
 			continue
 		}
-		if ruleItem.KeyItems == nil {
+		if specificItem.KeyItems == nil {
 			continue
 		}
-		for _, keyItem := range ruleItem.KeyItems {
-			if !identifierChecker.Check(reqInfos, ruleItem.Identifier, keyItem.Key) {
+		for _, keyItem := range specificItem.KeyItems {
+			if !identifierChecker.Check(ctx, reqInfos, specificItem.Identifier, keyItem.Key) {
 				continue
 			}
 
 			timeWindow := keyItem.Time.convertToSeconds()
 			if timeWindow == ErrorTimeDuration {
-				logging.Error(errors.New("error time window"), "error time window in llm_token_ratelimit.BaseRuleCollector.Collect()")
+				logging.Error(errors.New("error time window"),
+					"error time window in llm_token_ratelimit.BaseRuleCollector.Collect()",
+					"requestID", ctx.Get(KeyRequestID),
+				)
 				continue
 			}
 
 			params := &BaseLimitKeyParams{
-				RuleName:       rule.RuleName,
+				Resource:       generateHash(rule.Resource),
 				Strategy:       rule.Strategy,
-				IdentifierType: ruleItem.Identifier.Type,
+				IdentifierType: specificItem.Identifier.Type,
 				TimeWindow:     timeWindow,
 				TokenSize:      keyItem.Token.Number,
 				CountStrategy:  keyItem.Token.CountStrategy,
 				// PETA
 				Encoding: rule.Encoding,
 			}
-			c.addMatchedRule(params, ruleMap)
+			c.addMatchedRule(ctx, params, ruleMap)
 		}
 	}
 
@@ -83,15 +90,16 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 	return rules
 }
 
-func (c *BaseRuleCollector) addMatchedRule(params *BaseLimitKeyParams, ruleMap map[string]*MatchedRule) {
+func (c *BaseRuleCollector) addMatchedRule(ctx *Context, params *BaseLimitKeyParams, ruleMap map[string]*MatchedRule) {
 	if c == nil {
 		return
 	}
 	if params.CountStrategy != TotalTokens {
 		limitKey, err := c.generateLimitKey(params)
 		if err != nil {
-			logging.Error(err, "generateLimitKey failed in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
+			logging.Error(err, "failed to generate LimitKey in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
 				"params", params,
+				"requestID", ctx.Get(KeyRequestID),
 			)
 			return
 		}
@@ -108,8 +116,9 @@ func (c *BaseRuleCollector) addMatchedRule(params *BaseLimitKeyParams, ruleMap m
 	params.CountStrategy = TotalTokens
 	limitKey, err := c.generateLimitKey(params)
 	if err != nil {
-		logging.Error(err, "generateLimitKey failed in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
+		logging.Error(err, "failed to generate LimitKey in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
 			"params", params,
+			"requestID", ctx.Get(KeyRequestID),
 		)
 		return
 	}
@@ -129,7 +138,7 @@ func (c *BaseRuleCollector) generateLimitKey(params *BaseLimitKeyParams) (string
 		return "", fmt.Errorf("BaseRuleCollector is nil")
 	}
 	return fmt.Sprintf(RedisRatelimitKeyFormat,
-		params.RuleName,
+		params.Resource,
 		params.Strategy.String(),
 		params.IdentifierType.String(),
 		params.TimeWindow,

@@ -42,10 +42,15 @@ func (c *LLMTokenRatelimitStatSlot) OnEntryBlocked(_ *base.EntryContext, _ *base
 }
 
 func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
-	llmTokenRatelimitCtx := extractContextFromArgs(ctx)
-	if llmTokenRatelimitCtx == nil {
+	usedTokenInfos, ok := ctx.GetPair(KeyUsedTokenInfos).(*UsedTokenInfos)
+	if !ok || usedTokenInfos == nil {
 		return
 	}
+	llmTokenRatelimitCtx, ok := ctx.GetPair(KeyContext).(*Context)
+	if !ok || llmTokenRatelimitCtx == nil {
+		return
+	}
+	llmTokenRatelimitCtx.Set(KeyUsedTokenInfos, usedTokenInfos)
 
 	rulesInterface := llmTokenRatelimitCtx.Get(KeyMatchedRules)
 	if rulesInterface == nil {

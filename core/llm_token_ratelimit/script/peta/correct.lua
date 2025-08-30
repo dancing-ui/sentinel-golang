@@ -90,7 +90,7 @@ end
 -- Calculate prediction error
 local predicted_error = math.abs(actual - estimated)
 -- Correction result for reservation
-local correct_result = 1
+local correct_result = 0
 -- Mainly handle underestimation cases to properly limit actual usage; overestimation may reject requests but won't affect downstream services
 if estimated < actual then -- Underestimation
     -- directly deduct all underestimated tokens
@@ -108,7 +108,7 @@ if estimated < actual then -- Underestimation
                 compensation_start + window_size, window_size, max_capacity, predicted_error)
             if calculate_tokens_in_range(sliding_window_key, compensation_time - window_size, compensation_time) +
                 predicted_error > max_capacity then
-                correct_result = 0 -- If the compensation time exceeds max capacity, return 0 to indicate failure
+                correct_result = 1 -- If the compensation time exceeds max capacity, return 1 to indicate failure
                 break
             end
             redis.call('ZADD', sliding_window_key, compensation_time,
@@ -121,6 +121,8 @@ if estimated < actual then -- Underestimation
             compensation_start = compensation_start + window_size
         end
     end
+elseif estimated > actual then -- Overestimation
+    correct_result = 2
 end
 
 -- Set expiration time to window size plus 5 seconds buffer

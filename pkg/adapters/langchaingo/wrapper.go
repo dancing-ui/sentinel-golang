@@ -41,25 +41,20 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 		resource = w.options.resourceExtract(ctx)
 	}
 
-	reqInfos := &llmtokenratelimit.RequestInfos{}
-	if w.options.requestInfosExtract != nil {
-		reqInfos = w.options.requestInfosExtract(ctx)
-	}
-
 	prompts := []string{}
 	if w.options.promptsExtract != nil {
 		prompts = w.options.promptsExtract(messages)
 	}
 
-	llmTokenRatelimitCtx := llmtokenratelimit.NewContext()
-	if llmTokenRatelimitCtx == nil {
-		return nil, fmt.Errorf("llm token ratelimit context is nil")
+	reqInfos := llmtokenratelimit.GenerateRequestInfos(
+		llmtokenratelimit.WithPrompts(prompts),
+	)
+	if w.options.requestInfosExtract != nil {
+		reqInfos = w.options.requestInfosExtract(ctx)
 	}
-	llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyRequestInfos, reqInfos)
-	llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyLLMPrompts, prompts)
 
 	// Check
-	entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(llmTokenRatelimitCtx))
+	entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(reqInfos))
 
 	if err != nil {
 		// Block
@@ -89,7 +84,7 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 		usedTokenInfos = infos
 	}
 
-	llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
+	entry.SetPair(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
 	entry.Exit()
 
 	return response, nil

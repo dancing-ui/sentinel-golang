@@ -57,29 +57,13 @@ func (ctx *Context) Get(key string) interface{} {
 	return nil
 }
 
-func extractContextFromArgs(ctx *base.EntryContext) *Context {
-	if ctx == nil || ctx.Input == nil || ctx.Input.Args == nil {
-		return nil
+func (ctx *Context) extractArgs(entryCtx *base.EntryContext) {
+	if ctx == nil || entryCtx == nil || entryCtx.Input == nil || entryCtx.Input.Args == nil {
+		return
 	}
-	for _, arg := range ctx.Input.Args {
-		if llmCtx, ok := arg.(*Context); ok && llmCtx != nil {
-			return llmCtx
+	for _, arg := range entryCtx.Input.Args {
+		if reqInfos, ok := arg.(*RequestInfos); ok && reqInfos != nil {
+			ctx.Set(KeyRequestInfos, reqInfos)
 		}
 	}
-	return nil
-}
-
-func extractContextFromData(ctx *base.EntryContext) *Context {
-	if ctx == nil || ctx.Data == nil {
-		return nil
-	}
-	for key, value := range ctx.Data {
-		if key != KeyContext {
-			continue
-		}
-		if llmCtx, ok := value.(*Context); ok && llmCtx != nil {
-			return llmCtx
-		}
-	}
-	return nil
 }

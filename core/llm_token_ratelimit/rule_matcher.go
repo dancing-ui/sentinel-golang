@@ -40,7 +40,7 @@ type RateLimitChecker interface {
 }
 
 type IdentifierChecker interface {
-	Check(infos *RequestInfos, identifier Identifier, pattern string) bool
+	Check(ctx *Context, infos *RequestInfos, identifier Identifier, pattern string) bool
 }
 
 type TokenUpdater interface {
@@ -127,7 +127,11 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 	}
 	collector := m.getMatchedRuleCollector(rule.Strategy)
 	if collector == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get collector", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"),
+			"unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get collector",
+			"strategy", rule.Strategy.String(),
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
 
@@ -138,7 +142,11 @@ func (m *RuleMatcher) checkPass(ctx *Context, rule *Rule) bool {
 
 	checker := m.getRateLimitChecker(rule.Strategy)
 	if checker == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get checker", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"),
+			"unknown strategy in llm_token_ratelimit.RuleMatcher.checkPass() when get checker",
+			"strategy", rule.Strategy.String(),
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
 
@@ -185,7 +193,11 @@ func (m *RuleMatcher) update(ctx *Context, rule *MatchedRule) {
 	}
 	updater := m.getTokenUpdater(rule.Strategy)
 	if updater == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.RuleMatcher.update() when get updater", "strategy", rule.Strategy.String())
+		logging.Error(errors.New("unknown strategy"),
+			"unknown strategy in llm_token_ratelimit.RuleMatcher.update() when get updater",
+			"strategy", rule.Strategy.String(),
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
 	updater.Update(ctx, rule)

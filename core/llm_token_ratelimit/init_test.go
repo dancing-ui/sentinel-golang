@@ -38,7 +38,6 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 			Rules: []*Rule{
 				{
 					ID:       fmt.Sprintf("rule-%d", i),
-					RuleName: fmt.Sprintf("test-rule-%d", i),
 					Resource: fmt.Sprintf("/api/test-%d", i),
 				},
 			},
@@ -171,10 +170,9 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 			Rules: []*Rule{
 				{
 					ID:       fmt.Sprintf("concurrent-rule-%d", i),
-					RuleName: fmt.Sprintf("concurrent-test-%d", i),
 					Resource: fmt.Sprintf("/api/concurrent-%d", i),
 					Strategy: FixedWindow,
-					RuleItems: []*RuleItem{
+					SpecificItems: []*SpecificItem{
 						{
 							Identifier: Identifier{Type: Header, Value: "*"},
 							KeyItems: []*KeyItem{
@@ -268,10 +266,9 @@ func TestInitRules_ConcurrentSafety(t *testing.T) {
 		Rules: []*Rule{
 			{
 				ID:       "test-rule-1",
-				RuleName: "concurrent-rule",
 				Resource: "/api/test",
 				Strategy: FixedWindow,
-				RuleItems: []*RuleItem{
+				SpecificItems: []*SpecificItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "*"},
 						KeyItems: []*KeyItem{
@@ -338,21 +335,21 @@ func TestSafeConfig_DataIntegrity(t *testing.T) {
 			ErrorCode:    100,
 			ErrorMessage: "config-100",
 			Rules: []*Rule{
-				{ID: "rule-100", RuleName: "test-100"},
+				{ID: "rule-100"},
 			},
 		},
 		{
 			ErrorCode:    200,
 			ErrorMessage: "config-200",
 			Rules: []*Rule{
-				{ID: "rule-200", RuleName: "test-200"},
+				{ID: "rule-200"},
 			},
 		},
 		{
 			ErrorCode:    300,
 			ErrorMessage: "config-300",
 			Rules: []*Rule{
-				{ID: "rule-300", RuleName: "test-300"},
+				{ID: "rule-300"},
 			},
 		},
 	}
@@ -437,7 +434,6 @@ func BenchmarkSafeConfig_ConcurrentSetGet(b *testing.B) {
 		Rules: []*Rule{
 			{
 				ID:       "benchmark-rule",
-				RuleName: "benchmark",
 				Resource: "/api/benchmark",
 			},
 		},
@@ -511,7 +507,6 @@ func TestGlobalConfig_ConcurrentAccess(t *testing.T) {
 		Rules: []*Rule{
 			{
 				ID:       "global-rule",
-				RuleName: "global-test",
 				Resource: "/api/global",
 			},
 		},

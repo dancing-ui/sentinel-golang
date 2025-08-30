@@ -49,7 +49,11 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 	}
 	calculator := globalTokenCalculator.getCalculator(rule.CountStrategy)
 	if calculator == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey() when get calculator", "strategy", rule.CountStrategy.String())
+		logging.Error(errors.New("unknown strategy"),
+			"unknown strategy in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey() when get calculator",
+			"strategy", rule.CountStrategy.String(),
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
 	usedToken := calculator.Calculate(ctx, infos)
@@ -57,12 +61,18 @@ func (u *FixedWindowUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, inf
 	args := []interface{}{rule.TokenSize, rule.TimeWindow * 1000, usedToken}
 	response, err := globalRedisClient.Eval(globalFixedWindowUpdateScript, keys, args...)
 	if err != nil {
-		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()")
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
-	result := parseRedisResponse(response)
+	result := parseRedisResponse(ctx, response)
 	if result == nil || len(result) != 2 {
-		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()", "response", response)
+		logging.Error(errors.New("invalid redis response"),
+			"invalid redis response in llm_token_ratelimit.FixedWindowUpdater.updateLimitKey()",
+			"response", response,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
 }
@@ -94,10 +104,19 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 
 	calculator := globalTokenCalculator.getCalculator(rule.CountStrategy)
 	if calculator == nil {
-		logging.Error(errors.New("unknown strategy"), "unknown strategy in llm_token_ratelimit.PETAUpdater.updateLimitKey() when get calculator", "strategy", rule.CountStrategy.String())
+		logging.Error(errors.New("unknown strategy"),
+			"unknown strategy in llm_token_ratelimit.PETAUpdater.updateLimitKey() when get calculator",
+			"strategy", rule.CountStrategy.String(),
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
 	actualToken := calculator.Calculate(ctx, infos)
+	logging.Info("[LLMTokenRateLimit] actual token",
+		"limitKey", rule.LimitKey,
+		"actualToken", actualToken,
+		"requestID", ctx.Get(KeyRequestID),
+	)
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
@@ -106,24 +125,34 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
 	response, err := globalRedisClient.Eval(globalPETACorrectScript, keys, args...)
 	if err != nil {
-		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAUpdater.updateLimitKey()")
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAUpdater.updateLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
-	result := parseRedisResponse(response)
+	result := parseRedisResponse(ctx, response)
 	if result == nil || len(result) != 1 {
-		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.PETAUpdater.updateLimitKey()", "response", response)
+		logging.Error(errors.New("invalid redis response"),
+			"invalid redis response in llm_token_ratelimit.PETAUpdater.updateLimitKey()",
+			"response", response,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
 
 	correctResult := result[0]
 	if correctResult != PETACorrectOK {
-		logging.Warn("[LLMTokenRateLimit PETAUpdater.updateLimitKey] failed to update the limit key", "limitKey", rule.LimitKey, "correctResult", correctResult)
+		logging.Warn("[LLMTokenRateLimit] failed to update the limit key",
+			"limitKey", rule.LimitKey,
+			"correctResult", correctResult,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
-	u.updateDifference(rule, actualToken-rule.EstimatedToken, rule.TimeWindow)
+	u.updateDifference(ctx, rule, actualToken-rule.EstimatedToken, rule.TimeWindow)
 }
 
-func (u *PETAUpdater) updateDifference(rule *MatchedRule, difference int, expiration int64) {
+func (u *PETAUpdater) updateDifference(ctx *Context, rule *MatchedRule, difference int, expiration int64) {
 	if u == nil {
 		return
 	}
@@ -132,9 +161,27 @@ func (u *PETAUpdater) updateDifference(rule *MatchedRule, difference int, expira
 	keys := []string{key}
 	args := []interface{}{difference, expiration}
 
-	_, err := globalRedisClient.Eval(globalTokenEncoderUpdateScript, keys, args...)
+	response, err := globalRedisClient.Eval(globalTokenEncoderUpdateScript, keys, args...)
 	if err != nil {
-		logging.Error(err, "failed to update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()", "key", key, "difference", difference)
+		logging.Error(err, "failed to update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()",
+			"key", key,
+			"difference", difference,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return
 	}
+	result := parseRedisResponse(ctx, response)
+	if result == nil || len(result) != 2 {
+		logging.Error(errors.New("invalid redis response"),
+			"invalid redis response in llm_token_ratelimit.PETAUpdater.updateDifference()",
+			"response", response,
+			"requestID", ctx.Get(KeyRequestID),
+		)
+		return
+	}
+	logging.Info("[LLMTokenRateLimit] successfully update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()",
+		"key", key,
+		"difference", result[0],
+		"requestID", ctx.Get(KeyRequestID),
+	)
 }

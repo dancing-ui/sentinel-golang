@@ -16,6 +16,7 @@ package llmtokenratelimit
 
 type RequestInfos struct {
 	Headers map[string][]string `json:"headers"`
+	Prompts []string            `json:"prompts"`
 }
 
 type RequestInfo func(*RequestInfos)
@@ -23,6 +24,12 @@ type RequestInfo func(*RequestInfos)
 func WithHeader(headers map[string][]string) RequestInfo {
 	return func(infos *RequestInfos) {
 		infos.Headers = headers
+	}
+}
+
+func WithPrompts(prompts []string) RequestInfo {
+	return func(infos *RequestInfos) {
+		infos.Prompts = prompts
 	}
 }
 

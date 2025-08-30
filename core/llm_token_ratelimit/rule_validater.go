@@ -17,7 +17,6 @@ package llmtokenratelimit
 import (
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 func IsValidRule(r *Rule) error {
@@ -35,24 +34,19 @@ func IsValidRule(r *Rule) error {
 		return fmt.Errorf("invalid strategy: %w", err)
 	}
 
-	// Validate RuleName
-	if err := validateRuleName(r.RuleName); err != nil {
-		return fmt.Errorf("invalid ruleName: %w", err)
-	}
-
 	// Validate Encoding
 	if err := validateEncoding(r.Encoding); err != nil {
 		return fmt.Errorf("invalid token encoding: %w", err)
 	}
 
-	// Validate RuleItems (required)
-	if len(r.RuleItems) == 0 {
-		return fmt.Errorf("ruleItems cannot be empty")
+	// Validate SpecificItems (required)
+	if len(r.SpecificItems) == 0 {
+		return fmt.Errorf("specificItems cannot be empty")
 	}
 
-	for i, ruleItem := range r.RuleItems {
-		if err := validateRuleItem(ruleItem); err != nil {
-			return fmt.Errorf("invalid ruleItem[%d]: %w", i, err)
+	for i, specificItem := range r.SpecificItems {
+		if err := validateSpecificItem(specificItem); err != nil {
+			return fmt.Errorf("invalid specificItem[%d]: %w", i, err)
 		}
 	}
 
@@ -80,21 +74,6 @@ func validateStrategy(strategy Strategy) error {
 	}
 }
 
-func validateRuleName(ruleName string) error {
-	if ruleName == "" {
-		return fmt.Errorf("ruleName pattern cannot be empty")
-	}
-
-	// Check for Redis key forbidden characters
-	for char, description := range RedisKeyForbiddenChars {
-		if strings.Contains(ruleName, char) {
-			return fmt.Errorf("ruleName contains forbidden character '%s' for Redis key (%s)", char, description)
-		}
-	}
-
-	return nil
-}
-
 func validateEncoding(encoding TokenEncoding) error {
 	// Validate TokenEncoding
 	switch encoding.Provider {
@@ -105,22 +84,22 @@ func validateEncoding(encoding TokenEncoding) error {
 	}
 }
 
-func validateRuleItem(ruleItem *RuleItem) error {
-	if ruleItem == nil {
-		return fmt.Errorf("ruleItem cannot be nil")
+func validateSpecificItem(specificItem *SpecificItem) error {
+	if specificItem == nil {
+		return fmt.Errorf("specificItem cannot be nil")
 	}
 
 	// Validate Identifier
-	if err := validateIdentifier(&ruleItem.Identifier); err != nil {
+	if err := validateIdentifier(&specificItem.Identifier); err != nil {
 		return fmt.Errorf("invalid identifier: %w", err)
 	}
 
 	// Validate KeyItems (required)
-	if len(ruleItem.KeyItems) == 0 {
+	if len(specificItem.KeyItems) == 0 {
 		return fmt.Errorf("keyItems cannot be empty")
 	}
 
-	for i, keyItem := range ruleItem.KeyItems {
+	for i, keyItem := range specificItem.KeyItems {
 		if err := validateKeyItem(keyItem); err != nil {
 			return fmt.Errorf("invalid keyItem[%d]: %w", i, err)
 		}

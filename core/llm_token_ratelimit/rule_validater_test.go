@@ -36,8 +36,7 @@ func TestIsValidRule(t *testing.T) {
 			rule: &Rule{
 				Resource: "test-resource",
 				Strategy: FixedWindow,
-				RuleName: "test-rule",
-				RuleItems: []*RuleItem{
+				SpecificItems: []*SpecificItem{
 					{
 						Identifier: Identifier{
 							Type:  Header,
@@ -64,21 +63,19 @@ func TestIsValidRule(t *testing.T) {
 		{
 			name: "empty rule items",
 			rule: &Rule{
-				Resource:  "test-resource",
-				Strategy:  FixedWindow,
-				RuleName:  "test-rule",
-				RuleItems: []*RuleItem{},
+				Resource:      "test-resource",
+				Strategy:      FixedWindow,
+				SpecificItems: []*SpecificItem{},
 			},
 			wantError: true,
-			errorMsg:  "ruleItems cannot be empty",
+			errorMsg:  "specificItems cannot be empty",
 		},
 		{
 			name: "invalid resource",
 			rule: &Rule{
 				Resource: "",
 				Strategy: FixedWindow,
-				RuleName: "test-rule",
-				RuleItems: []*RuleItem{
+				SpecificItems: []*SpecificItem{
 					{
 						Identifier: Identifier{Type: Header, Value: "api-key"},
 						KeyItems: []*KeyItem{
@@ -200,74 +197,6 @@ func TestValidateStrategy(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Errorf("validateStrategy() unexpected error = %v", err)
-				}
-			}
-		})
-	}
-}
-
-func TestValidateRuleName(t *testing.T) {
-	tests := []struct {
-		name      string
-		ruleName  string
-		wantError bool
-		errorMsg  string
-	}{
-		{
-			name:      "empty rule name",
-			ruleName:  "",
-			wantError: true,
-			errorMsg:  "ruleName pattern cannot be empty",
-		},
-		{
-			name:      "valid rule name",
-			ruleName:  "my-rule-123",
-			wantError: false,
-		},
-		{
-			name:      "rule name with space",
-			ruleName:  "my rule",
-			wantError: true,
-			errorMsg:  "ruleName contains forbidden character",
-		},
-		{
-			name:      "rule name with newline",
-			ruleName:  "my-rule\n",
-			wantError: true,
-			errorMsg:  "ruleName contains forbidden character",
-		},
-		{
-			name:      "rule name with tab",
-			ruleName:  "my-rule\t",
-			wantError: true,
-			errorMsg:  "ruleName contains forbidden character",
-		},
-		{
-			name:      "rule name with carriage return",
-			ruleName:  "my-rule\r",
-			wantError: true,
-			errorMsg:  "ruleName contains forbidden character",
-		},
-		{
-			name:      "rule name with null byte",
-			ruleName:  "my-rule\x00",
-			wantError: true,
-			errorMsg:  "ruleName contains forbidden character",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateRuleName(tt.ruleName)
-			if tt.wantError {
-				if err == nil {
-					t.Errorf("validateRuleName() expected error but got nil")
-				} else if tt.errorMsg != "" && !contains(err.Error(), tt.errorMsg) {
-					t.Errorf("validateRuleName() error = %v, want error containing %v", err, tt.errorMsg)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("validateRuleName() unexpected error = %v", err)
 				}
 			}
 		})
@@ -644,22 +573,22 @@ func TestValidateKeyItem(t *testing.T) {
 	}
 }
 
-func TestValidateRuleItem(t *testing.T) {
+func TestValidateSpecificItem(t *testing.T) {
 	tests := []struct {
-		name      string
-		ruleItem  *RuleItem
-		wantError bool
-		errorMsg  string
+		name         string
+		specificItem *SpecificItem
+		wantError    bool
+		errorMsg     string
 	}{
 		{
-			name:      "nil rule item",
-			ruleItem:  nil,
-			wantError: true,
-			errorMsg:  "ruleItem cannot be nil",
+			name:         "nil rule item",
+			specificItem: nil,
+			wantError:    true,
+			errorMsg:     "specificItem cannot be nil",
 		},
 		{
 			name: "valid rule item",
-			ruleItem: &RuleItem{
+			specificItem: &SpecificItem{
 				Identifier: Identifier{
 					Type:  Header,
 					Value: "api-key",
@@ -682,7 +611,7 @@ func TestValidateRuleItem(t *testing.T) {
 		},
 		{
 			name: "empty key items",
-			ruleItem: &RuleItem{
+			specificItem: &SpecificItem{
 				Identifier: Identifier{
 					Type:  Header,
 					Value: "api-key",
@@ -694,7 +623,7 @@ func TestValidateRuleItem(t *testing.T) {
 		},
 		{
 			name: "invalid identifier",
-			ruleItem: &RuleItem{
+			specificItem: &SpecificItem{
 				Identifier: Identifier{
 					Type:  IdentifierType(999),
 					Value: "api-key",
@@ -720,16 +649,16 @@ func TestValidateRuleItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateRuleItem(tt.ruleItem)
+			err := validateSpecificItem(tt.specificItem)
 			if tt.wantError {
 				if err == nil {
-					t.Errorf("validateRuleItem() expected error but got nil")
+					t.Errorf("validateSpecificItem() expected error but got nil")
 				} else if tt.errorMsg != "" && !contains(err.Error(), tt.errorMsg) {
-					t.Errorf("validateRuleItem() error = %v, want error containing %v", err, tt.errorMsg)
+					t.Errorf("validateSpecificItem() error = %v, want error containing %v", err, tt.errorMsg)
 				}
 			} else {
 				if err != nil {
-					t.Errorf("validateRuleItem() unexpected error = %v", err)
+					t.Errorf("validateSpecificItem() unexpected error = %v", err)
 				}
 			}
 		})

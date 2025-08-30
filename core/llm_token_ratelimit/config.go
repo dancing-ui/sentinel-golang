@@ -86,7 +86,7 @@ type KeyItem struct {
 	Time  Time   `json:"time" yaml:"time"`
 }
 
-type RuleItem struct {
+type SpecificItem struct {
 	Identifier Identifier `json:"identifier" yaml:"identifier"`
 	KeyItems   []*KeyItem `json:"keyItems" yaml:"keyItems"`
 }
@@ -332,18 +332,18 @@ func (p TokenEncoderProvider) String() string {
 	}
 }
 
-func (ri *RuleItem) String() string {
-	if ri == nil {
-		return "RuleItem{nil}"
+func (si *SpecificItem) String() string {
+	if si == nil {
+		return "SpecificItem{nil}"
 	}
 
 	var sb strings.Builder
-	sb.WriteString("RuleItem{")
-	sb.WriteString(fmt.Sprintf("Identifier:%s", ri.Identifier.String()))
+	sb.WriteString("SpecificItem{")
+	sb.WriteString(fmt.Sprintf("Identifier:%s", si.Identifier.String()))
 
-	if len(ri.KeyItems) > 0 {
+	if len(si.KeyItems) > 0 {
 		sb.WriteString(", KeyItems:[")
-		for i, item := range ri.KeyItems {
+		for i, item := range si.KeyItems {
 			if i > 0 {
 				sb.WriteString(", ")
 			}

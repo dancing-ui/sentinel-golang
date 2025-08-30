@@ -16,6 +16,7 @@ package llmtokenratelimit
 
 import (
 	"github.com/alibaba/sentinel-golang/core/base"
+	"github.com/alibaba/sentinel-golang/logging"
 )
 
 const (
@@ -39,27 +40,38 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 		return result
 	}
 
-	if passed, rule := checkPass(ctx); !passed {
+	if passed, rule, snapshot := s.checkPass(ctx); !passed {
 		msg := "llm token ratelimit check blocked"
 		if result == nil {
-			result = base.NewTokenResultBlockedWithCause(base.BlockTypeLLMTokenRateLimit, msg, rule, nil)
+			result = base.NewTokenResultBlockedWithCause(base.BlockTypeLLMTokenRateLimit, msg, rule, snapshot)
 		} else {
-			result.ResetToBlockedWithCause(base.BlockTypeLLMTokenRateLimit, msg, rule, nil)
+			result.ResetToBlockedWithCause(base.BlockTypeLLMTokenRateLimit, msg, rule, snapshot)
 		}
 	}
 
 	return result
 }
 
-func checkPass(ctx *base.EntryContext) (bool, *Rule) {
-	llmTokenRatelimitCtx := extractContextFromArgs(ctx)
-	if llmTokenRatelimitCtx == nil {
-		return true, nil
+func (s *Slot) checkPass(ctx *base.EntryContext) (bool, *Rule, interface{}) {
+	requestID := generateUUID()
+	llmTokenRatelimitCtx, ok := ctx.GetPair(KeyContext).(*Context)
+	if !ok || llmTokenRatelimitCtx == nil {
+		llmTokenRatelimitCtx = NewContext()
+		if llmTokenRatelimitCtx == nil {
+			logging.Warn("[LLMTokenRateLimit] failed to create llm token ratelimit context",
+				"requestID", requestID,
+			)
+			return true, nil, nil
+		}
+		llmTokenRatelimitCtx.extractArgs(ctx)
+		llmTokenRatelimitCtx.Set(KeyRequestID, requestID)
+		ctx.SetPair(KeyContext, llmTokenRatelimitCtx)
 	}
 	for _, rule := range getRulesOfResource(ctx.Resource.Name()) {
 		if !globalRuleMatcher.checkPass(llmTokenRatelimitCtx, rule) {
-			return false, rule
+			return false, rule, llmTokenRatelimitCtx.Get(KeyResponseHeaders)
 		}
 	}
-	return true, nil
+	ctx.SetPair(KeyResponseHeaders, llmTokenRatelimitCtx.Get(KeyResponseHeaders))
+	return true, nil, nil
 }

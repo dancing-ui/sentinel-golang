@@ -359,24 +359,24 @@ func TestKeyItem_String(t *testing.T) {
 	}
 }
 
-func TestRuleItem_String(t *testing.T) {
+func TestSpecificItem_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		ri       *RuleItem
+		ri       *SpecificItem
 		expected string
 	}{
-		{"nil ruleitem", nil, "RuleItem{nil}"},
+		{"nil specificItem", nil, "SpecificItem{nil}"},
 		{
 			"empty keyitems",
-			&RuleItem{
+			&SpecificItem{
 				Identifier: Identifier{Type: AllIdentifier, Value: ".*"},
 				KeyItems:   []*KeyItem{},
 			},
-			"RuleItem{Identifier:Identifier{Type:all, Value:.*}, KeyItems:[]}",
+			"SpecificItem{Identifier:Identifier{Type:all, Value:.*}, KeyItems:[]}",
 		},
 		{
 			"single keyitem",
-			&RuleItem{
+			&SpecificItem{
 				Identifier: Identifier{Type: Header, Value: "user-id"},
 				KeyItems: []*KeyItem{
 					{
@@ -386,11 +386,11 @@ func TestRuleItem_String(t *testing.T) {
 					},
 				},
 			},
-			"RuleItem{Identifier:Identifier{Type:header, Value:user-id}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:3600 second}}]}",
+			"SpecificItem{Identifier:Identifier{Type:header, Value:user-id}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:1000, CountStrategy:total-tokens}, Time:Time{Value:3600 second}}]}",
 		},
 		{
 			"multiple keyitems",
-			&RuleItem{
+			&SpecificItem{
 				Identifier: Identifier{Type: Header, Value: "api-key"},
 				KeyItems: []*KeyItem{
 					{
@@ -405,7 +405,7 @@ func TestRuleItem_String(t *testing.T) {
 					},
 				},
 			},
-			"RuleItem{Identifier:Identifier{Type:header, Value:api-key}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:1800 second}}, KeyItem{Key:limit2, Token:Token{Number:300, CountStrategy:output-tokens}, Time:Time{Value:3600 second}}]}",
+			"SpecificItem{Identifier:Identifier{Type:header, Value:api-key}, KeyItems:[KeyItem{Key:limit1, Token:Token{Number:500, CountStrategy:input-tokens}, Time:Time{Value:1800 second}}, KeyItem{Key:limit2, Token:Token{Number:300, CountStrategy:output-tokens}, Time:Time{Value:3600 second}}]}",
 		},
 	}
 
@@ -425,8 +425,7 @@ rules:
   - id: "rule1"
     resource: "/api/chat"
     strategy: fixed-window
-    ruleName: "chat-limit"
-    ruleItems:
+    specificItems:
       - identifier:
           type: header
           value: "user-id"
@@ -478,17 +477,17 @@ errorMessage: "Rate limit exceeded"
 		t.Errorf("Expected FixedWindow strategy, got %v", rule.Strategy)
 	}
 
-	if len(rule.RuleItems) != 1 {
-		t.Errorf("Expected 1 rule item, got %d", len(rule.RuleItems))
+	if len(rule.SpecificItems) != 1 {
+		t.Errorf("Expected 1 rule item, got %d", len(rule.SpecificItems))
 	}
 
-	ruleItem := rule.RuleItems[0]
-	if ruleItem.Identifier.Type != Header {
-		t.Errorf("Expected Header identifier type, got %v", ruleItem.Identifier.Type)
+	specificItem := rule.SpecificItems[0]
+	if specificItem.Identifier.Type != Header {
+		t.Errorf("Expected Header identifier type, got %v", specificItem.Identifier.Type)
 	}
 
-	if len(ruleItem.KeyItems) != 2 {
-		t.Errorf("Expected 2 key items, got %d", len(ruleItem.KeyItems))
+	if len(specificItem.KeyItems) != 2 {
+		t.Errorf("Expected 2 key items, got %d", len(specificItem.KeyItems))
 	}
 
 	// Test Redis config
@@ -516,7 +515,7 @@ func TestYAMLUnmarshalingErrors(t *testing.T) {
 			"invalid identifier type",
 			`
 rules:
-  - ruleItems:
+  - specificItems:
       - identifier:
           type: invalid
 `,
@@ -526,7 +525,7 @@ rules:
 			"invalid count strategy",
 			`
 rules:
-  - ruleItems:
+  - specificItems:
       - keyItems:
           - token:
               countStrategy: invalid-strategy
@@ -537,7 +536,7 @@ rules:
 			"invalid time unit",
 			`
 rules:
-  - ruleItems:
+  - specificItems:
       - keyItems:
           - time:
               unit: invalid-unit
@@ -600,8 +599,8 @@ func BenchmarkToken_String(b *testing.B) {
 	}
 }
 
-func BenchmarkRuleItem_String(b *testing.B) {
-	ri := &RuleItem{
+func BenchmarkSpecificItem_String(b *testing.B) {
+	ri := &SpecificItem{
 		Identifier: Identifier{Type: Header, Value: "user-id"},
 		KeyItems: []*KeyItem{
 			{

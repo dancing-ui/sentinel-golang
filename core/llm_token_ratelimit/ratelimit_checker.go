@@ -58,28 +58,37 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 	args := []interface{}{rule.TokenSize, rule.TimeWindow * 1000}
 	response, err := globalRedisClient.Eval(globalFixedWindowQueryScript, keys, args...)
 	if err != nil {
-		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()")
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
-	result := parseRedisResponse(response)
+	result := parseRedisResponse(ctx, response)
 	if result == nil || len(result) != 2 {
-		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()", "response", response)
+		logging.Error(errors.New("invalid redis response"),
+			"invalid redis response in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()",
+			"response", response,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
 
 	remaining := result[0]
-	if remaining < 0 {
-		responseHeader := NewResponseHeader()
-		if responseHeader == nil {
-			logging.Error(errors.New("failed to create response header"), "failed to create response header in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()")
-			return false
-		}
-		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", remaining))
-		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(result[1]) * time.Millisecond).String())
-		ctx.Set(KeyResponseHeaders, responseHeader)
+	responseHeader := NewResponseHeader()
+	if responseHeader == nil {
+		logging.Error(errors.New("failed to create response header"),
+			"failed to create response header in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return false
 	}
-
+	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
+	if remaining < 0 {
+		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", remaining))
+		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(result[1]) * time.Millisecond).String())
+		return false
+	}
+	ctx.Set(KeyResponseHeaders, responseHeader)
 	return true
 }
 
@@ -112,22 +121,24 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		return true
 	}
 
-	promptsValue := ctx.Get(KeyLLMPrompts)
-	if promptsValue == nil {
-		logging.Warn("KeyLLMPrompts is nil, using empty string array")
-		promptsValue = []string{} // allow nil value to be treated as empty string array
-	}
-	prompts, ok := promptsValue.([]string)
-	if !ok {
-		logging.Warn("invalid type for KeyLLMPrompts, expected []string", "type", fmt.Sprintf("%T", promptsValue))
-		prompts = []string{} // fallback to empty string array if type assertion fails
+	prompts := []string{}
+	reqInfos := extractRequestInfos(ctx)
+	if reqInfos != nil {
+		prompts = reqInfos.Prompts
 	}
 
-	estimatedToken, err := c.countTokens(prompts, rule)
+	estimatedToken, err := c.countTokens(ctx, prompts, rule)
 	if err != nil {
-		logging.Error(err, "failed to count tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()")
+		logging.Error(err, "failed to count tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
+	logging.Info("[LLMTokenRateLimit] estimated token",
+		"limitKey", rule.LimitKey,
+		"estimatedToken", estimatedToken,
+		"requestID", ctx.Get(KeyRequestID),
+	)
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
@@ -136,33 +147,43 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
 	response, err := globalRedisClient.Eval(globalPETAWithholdScript, keys, args...)
 	if err != nil {
-		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAChecker.checkLimitKey()")
+		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAChecker.checkLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
-	result := parseRedisResponse(response)
+	result := parseRedisResponse(ctx, response)
 	if result == nil || len(result) != 2 {
-		logging.Error(errors.New("invalid redis response"), "invalid redis response in llm_token_ratelimit.PETAChecker.checkLimitKey()", "response", response)
+		logging.Error(errors.New("invalid redis response"),
+			"invalid redis response in llm_token_ratelimit.PETAChecker.checkLimitKey()",
+			"response", response,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true
 	}
 
 	// TODO: add waiting and timeout callback
 	waitingTime := result[1]
-	if waitingTime != PETANoWaiting {
-		responseHeader := NewResponseHeader()
-		if responseHeader == nil {
-			logging.Error(errors.New("failed to create response header"), "failed to create response header in llm_token_ratelimit.PETAChecker.checkLimitKey()")
-			return false
-		}
-		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", result[0]))
-		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(waitingTime) * time.Millisecond).String())
-		ctx.Set(KeyResponseHeaders, responseHeader)
+	responseHeader := NewResponseHeader()
+	if responseHeader == nil {
+		logging.Error(errors.New("failed to create response header"),
+			"failed to create response header in llm_token_ratelimit.PETAChecker.checkLimitKey()",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return false
 	}
+	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
+	if waitingTime != PETANoWaiting {
+		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", result[0]))
+		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(waitingTime) * time.Millisecond).String())
+		return false
+	}
+	ctx.Set(KeyResponseHeaders, responseHeader)
 	c.cacheEstimatedToken(rule, estimatedToken)
 	return true
 }
 
-func (c *PETAChecker) countTokens(prompts []string, rule *MatchedRule) (int, error) {
+func (c *PETAChecker) countTokens(ctx *Context, prompts []string, rule *MatchedRule) (int, error) {
 	if c == nil {
 		return 0, fmt.Errorf("PETAChecker is nil")
 	}
@@ -171,9 +192,12 @@ func (c *PETAChecker) countTokens(prompts []string, rule *MatchedRule) (int, err
 	case OutputTokens: // cannot predict output tokens
 		return 0, nil
 	case InputTokens, TotalTokens:
-		encoder := GetTokenEncoder(rule.Encoding)
+		encoder := LookupTokenEncoder(ctx, rule.Encoding) // try to get cached encoder
 		if encoder == nil {
-			return 0, fmt.Errorf("failed to get token encoder for encoding")
+			encoder = NewTokenEncoder(ctx, rule.Encoding) // create a new encoder
+			if encoder == nil {
+				return 0, fmt.Errorf("failed to create token encoder for encoding")
+			}
 		}
 		length, err := encoder.CountTokens(prompts, rule)
 		if err != nil {

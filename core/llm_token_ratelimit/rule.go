@@ -22,11 +22,10 @@ import (
 type Rule struct {
 	ID string `json:"id,omitempty" yaml:"id,omitempty"`
 
-	Resource  string        `json:"resource" yaml:"resource"`
-	Strategy  Strategy      `json:"strategy" yaml:"strategy"`
-	RuleName  string        `json:"ruleName" yaml:"ruleName"`
-	Encoding  TokenEncoding `json:"encoding" yaml:"encoding"`
-	RuleItems []*RuleItem   `json:"ruleItems" yaml:"ruleItems"`
+	Resource      string          `json:"resource" yaml:"resource"`
+	Strategy      Strategy        `json:"strategy" yaml:"strategy"`
+	Encoding      TokenEncoding   `json:"encoding" yaml:"encoding"`
+	SpecificItems []*SpecificItem `json:"specificItems" yaml:"specificItems"`
 }
 
 func (r *Rule) ResourceName() string {
@@ -48,12 +47,11 @@ func (r *Rule) String() string {
 
 	sb.WriteString(fmt.Sprintf("Resource:%s, ", r.Resource))
 	sb.WriteString(fmt.Sprintf("Strategy:%s, ", r.Strategy.String()))
-	sb.WriteString(fmt.Sprintf("RuleName:%s, ", r.RuleName))
 	sb.WriteString(fmt.Sprintf("Encoding:%s", r.Encoding.String()))
 
-	if len(r.RuleItems) > 0 {
-		sb.WriteString(", RuleItems:[")
-		for i, item := range r.RuleItems {
+	if len(r.SpecificItems) > 0 {
+		sb.WriteString(", SpecificItems:[")
+		for i, item := range r.SpecificItems {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
@@ -61,7 +59,7 @@ func (r *Rule) String() string {
 		}
 		sb.WriteString("]")
 	} else {
-		sb.WriteString(", RuleItems:[]")
+		sb.WriteString(", SpecificItems:[]")
 	}
 
 	sb.WriteString("}")
@@ -78,19 +76,13 @@ func (r *Rule) setDefaultRuleOption() {
 		r.Encoding.Model = DefaultTokenEncodingModel[r.Encoding.Provider]
 	}
 
-	for idx1, ruleItem := range r.RuleItems {
-		if len(ruleItem.Identifier.Value) == 0 {
-			r.RuleItems[idx1].Identifier.Value = DefaultIdentifierValuePattern
+	for idx1, specificItem := range r.SpecificItems {
+		if len(specificItem.Identifier.Value) == 0 {
+			r.SpecificItems[idx1].Identifier.Value = DefaultIdentifierValuePattern
 		}
-		for idx2, keyItem := range ruleItem.KeyItems {
+		for idx2, keyItem := range specificItem.KeyItems {
 			if len(keyItem.Key) == 0 {
-				r.RuleItems[idx1].KeyItems[idx2].Key = DefaultKeyPattern
-			}
-			if len(r.RuleName) == 0 &&
-				r.Resource == DefaultResourcePattern &&
-				r.RuleItems[idx1].Identifier.Value == DefaultIdentifierValuePattern &&
-				r.RuleItems[idx1].KeyItems[idx2].Key == DefaultKeyPattern {
-				r.RuleName = DefaultRuleName
+				r.SpecificItems[idx1].KeyItems[idx2].Key = DefaultKeyPattern
 			}
 		}
 	}
@@ -98,29 +90,29 @@ func (r *Rule) setDefaultRuleOption() {
 
 func (r *Rule) filterDuplicatedItem() {
 	occuredKeyItem := make(map[string]struct{})
-	var ruleItems []*RuleItem
-	for idx1 := len(r.RuleItems) - 1; idx1 >= 0; idx1-- {
+	var specificItems []*SpecificItem
+	for idx1 := len(r.SpecificItems) - 1; idx1 >= 0; idx1-- {
 		var keyItems []*KeyItem
-		for idx2 := len(r.RuleItems[idx1].KeyItems) - 1; idx2 >= 0; idx2-- {
+		for idx2 := len(r.SpecificItems[idx1].KeyItems) - 1; idx2 >= 0; idx2-- {
 			hash := generateHash(
-				r.RuleItems[idx1].Identifier.String(),
-				r.RuleItems[idx1].KeyItems[idx2].Key,
-				r.RuleItems[idx1].KeyItems[idx2].Token.CountStrategy.String(),
-				r.RuleItems[idx1].KeyItems[idx2].Time.String(),
+				r.SpecificItems[idx1].Identifier.String(),
+				r.SpecificItems[idx1].KeyItems[idx2].Key,
+				r.SpecificItems[idx1].KeyItems[idx2].Token.CountStrategy.String(),
+				r.SpecificItems[idx1].KeyItems[idx2].Time.String(),
 			)
 			if _, exists := occuredKeyItem[hash]; exists {
 				continue
 			}
 			occuredKeyItem[hash] = struct{}{}
-			keyItems = append(keyItems, r.RuleItems[idx1].KeyItems[idx2])
+			keyItems = append(keyItems, r.SpecificItems[idx1].KeyItems[idx2])
 		}
 		if len(keyItems) == 0 {
 			continue
 		}
-		ruleItems = append(ruleItems, &RuleItem{
-			Identifier: r.RuleItems[idx1].Identifier,
+		specificItems = append(specificItems, &SpecificItem{
+			Identifier: r.SpecificItems[idx1].Identifier,
 			KeyItems:   keyItems,
 		})
 	}
-	r.RuleItems = ruleItems
+	r.SpecificItems = specificItems
 }

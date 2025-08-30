@@ -16,12 +16,14 @@ package llmtokenratelimit
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
 	"unsafe"
 
 	"github.com/alibaba/sentinel-golang/logging"
+	"github.com/google/uuid"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -36,7 +38,7 @@ func generateHash(parts ...string) string {
 	return strconv.FormatUint(h.Sum64(), 16)
 }
 
-func parseRedisResponse(response interface{}) []int64 {
+func parseRedisResponse(ctx *Context, response interface{}) []int64 {
 	if response == nil {
 		return nil
 	}
@@ -58,6 +60,7 @@ func parseRedisResponse(response interface{}) []int64 {
 					"index", i,
 					"value", val,
 					"error", err.Error(),
+					"requestID", ctx.Get(KeyRequestID),
 				)
 				return nil
 			}
@@ -67,10 +70,11 @@ func parseRedisResponse(response interface{}) []int64 {
 		case float64:
 			result[i] = int64(val)
 		default:
-			logging.Error(nil, "unexpected redis response element type in llm_token_ratelimit.parseRedisResponse()",
+			logging.Error(errors.New("unknown error"), "unexpected redis response element type in llm_token_ratelimit.parseRedisResponse()",
 				"index", i,
 				"value", v,
 				"type", fmt.Sprintf("%T", v),
+				"requestID", ctx.Get(KeyRequestID),
 			)
 			return nil
 		}
@@ -98,6 +102,10 @@ func generateRandomString(n int) string {
 	}
 
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+func generateUUID() string {
+	return uuid.NewString()
 }
 
 func deepCopyByJSON(src, dest interface{}) error {

@@ -21,19 +21,21 @@ import (
 
 type AllIdentifierChecker struct{}
 
-func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
+func (f *AllIdentifierChecker) Check(ctx *Context, infos *RequestInfos, identifier Identifier, pattern string) bool {
 	if f == nil {
 		return false
 	}
 	if infos == nil {
-		logging.Warn("[LLMTokenRateLimit AllIdentifierChecker.Check] RequestInfos is nil")
+		logging.Warn("[LLMTokenRateLimit] requestInfos is nil",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true // allow nil for global rate limit
 	}
 	for identifierType, checker := range globalRuleMatcher.IdentifierCheckers {
 		if identifierType == AllIdentifier {
 			continue
 		}
-		if checker.Check(infos, identifier, pattern) {
+		if checker.Check(ctx, infos, identifier, pattern) {
 			return true
 		}
 	}
@@ -42,12 +44,14 @@ func (f *AllIdentifierChecker) Check(infos *RequestInfos, identifier Identifier,
 
 type HeaderChecker struct{}
 
-func (f *HeaderChecker) Check(infos *RequestInfos, identifier Identifier, pattern string) bool {
+func (f *HeaderChecker) Check(ctx *Context, infos *RequestInfos, identifier Identifier, pattern string) bool {
 	if f == nil {
 		return false
 	}
 	if infos == nil || infos.Headers == nil {
-		logging.Warn("[LLMTokenRateLimit HeaderChecker.Check] RequestInfos is nil")
+		logging.Warn("[LLMTokenRateLimit] requestInfos is nil",
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		return true // allow nil for global rate limit
 	}
 	for key, values := range infos.Headers {

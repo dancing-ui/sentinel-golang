@@ -15,9 +15,6 @@
 package ratelimit
 
 import (
-	"errors"
-	"net/http"
-
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/base"
 	llmtokenratelimit "github.com/alibaba/sentinel-golang/core/llm_token_ratelimit"
@@ -34,8 +31,7 @@ func InitSentinel() {
 
 			Resource: "POST:/v1/chat/completion/fixed_window",
 			Strategy: llmtokenratelimit.FixedWindow,
-			RuleName: "rule-fixed-window",
-			RuleItems: []*llmtokenratelimit.RuleItem{
+			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
 						Type:  llmtokenratelimit.Header,
@@ -61,9 +57,8 @@ func InitSentinel() {
 
 			Resource: "POST:/v1/chat/completion/peta",
 			Strategy: llmtokenratelimit.PETA,
-			RuleName: "rule-peta",
 			Encoding: llmtokenratelimit.TokenEncoding{},
-			RuleItems: []*llmtokenratelimit.RuleItem{
+			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
 						Type:  llmtokenratelimit.Header,
@@ -101,39 +96,29 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			resource = options.resourceExtract(c)
 		}
 
+		prompts := []string{}
+		if options.promptsExtract != nil {
+			prompts = options.promptsExtract(c)
+		}
+
 		reqInfos := llmtokenratelimit.GenerateRequestInfos(
 			llmtokenratelimit.WithHeader(c.Request.Header),
+			llmtokenratelimit.WithPrompts(prompts),
 		)
 
 		if options.requestInfosExtract != nil {
 			reqInfos = options.requestInfosExtract(c)
 		}
 
-		prompts := []string{}
-		if options.promptsExtract != nil {
-			prompts = options.promptsExtract(c)
-		}
-
-		// wrapper request
-		llmTokenRatelimitCtx := llmtokenratelimit.NewContext()
-		if llmTokenRatelimitCtx == nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": errors.New("failed to create llm token ratelimit context"),
-			})
-			return
-		}
-		llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyRequestInfos, reqInfos)
-		llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyLLMPrompts, prompts)
-
 		// check
-		entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(llmTokenRatelimitCtx))
+		entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(reqInfos))
 
 		if err != nil {
 			// Block
 			if options.blockFallback != nil {
 				options.blockFallback(c)
 			} else {
-				setResponseHeaders(c, llmTokenRatelimitCtx)
+				setResponseHeaders(c, err.TriggeredValue().(*llmtokenratelimit.ResponseHeader))
 				c.AbortWithStatusJSON(int(llmtokenratelimit.GetErrorCode()), gin.H{
 					"error": llmtokenratelimit.GetErrorMsg(),
 				})
@@ -141,6 +126,7 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			return
 		}
 		// Pass
+		setResponseHeaders(c, entry.Context().GetPair(llmtokenratelimit.KeyResponseHeaders).(*llmtokenratelimit.ResponseHeader))
 
 		// Wait for the response to be written
 		c.Next()
@@ -150,23 +136,18 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 		if !exists || usedTokenInfos == nil {
 			return
 		}
-		llmTokenRatelimitCtx.Set(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
+		entry.SetPair(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
 
 		entry.Exit() // Must be executed immediately after the Set function
 	}
 }
 
-func setResponseHeaders(c *gin.Context, ctx *llmtokenratelimit.Context) {
-	if c == nil || ctx == nil {
+func setResponseHeaders(c *gin.Context, header *llmtokenratelimit.ResponseHeader) {
+	if c == nil || header == nil {
 		return
 	}
 
-	responseHeaders, ok := ctx.Get(llmtokenratelimit.KeyResponseHeaders).(*llmtokenratelimit.ResponseHeader)
-	if !ok || responseHeaders == nil {
-		return
-	}
-
-	for key, value := range responseHeaders.GetAll() {
+	for key, value := range header.GetAll() {
 		c.Header(key, value)
 	}
 }

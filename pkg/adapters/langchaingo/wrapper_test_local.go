@@ -36,8 +36,7 @@ func initSentinel(_ *testing.T) {
 		{
 			Resource: "test-resource-allow",
 			Strategy: llmtokenratelimit.PETA,
-			RuleName: "rule-allow-all",
-			RuleItems: []*llmtokenratelimit.RuleItem{
+			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
 						Type:  llmtokenratelimit.Header,
@@ -62,8 +61,7 @@ func initSentinel(_ *testing.T) {
 		{
 			Resource: "test-resource-block",
 			Strategy: llmtokenratelimit.PETA,
-			RuleName: "rule-block-quickly",
-			RuleItems: []*llmtokenratelimit.RuleItem{
+			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
 						Type:  llmtokenratelimit.Header,

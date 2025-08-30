@@ -18,6 +18,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/go-redis/redis/v7"
@@ -25,6 +26,10 @@ import (
 )
 
 // ================================= TokenEncoder ====================================
+var (
+	tokenEncoderMap      = make(map[TokenEncoding]TokenEncoder)
+	tokenEncoderMapRWMux = &sync.RWMutex{}
+)
 
 //go:embed script/token_encoder/update.lua
 var globalTokenEncoderUpdateScript string
@@ -33,15 +38,28 @@ type TokenEncoder interface {
 	CountTokens(prompts []string, rule *MatchedRule) (int, error)
 }
 
-func GetTokenEncoder(encoding TokenEncoding) TokenEncoder {
-	// TODO: cache the encoder for each model to avoid re-initialization
+func NewTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
+	var encoder TokenEncoder
 	switch encoding.Provider {
 	case OpenAIEncoderProvider:
-		return NewOpenAIEncoder(encoding)
+		encoder = NewOpenAIEncoder(ctx, encoding)
 	default:
-		logging.Warn("unsupported token encoder provider: %s, falling back to OpenAIEncoder", encoding.Provider)
-		return NewOpenAIEncoder(encoding) // Fallback to OpenAIEncoder for unsupported providers
+		logging.Warn("[LLMTokenRateLimit] unsupported token encoder provider, falling back to OpenAIEncoder",
+			"unsupported encoder prodier", encoding.Provider,
+			"requestID", ctx.Get(KeyRequestID),
+		)
+		encoder = NewOpenAIEncoder(ctx, encoding) // Fallback to OpenAIEncoder for unsupported providers
 	}
+	tokenEncoderMapRWMux.Lock()
+	defer tokenEncoderMapRWMux.Unlock()
+	tokenEncoderMap[encoding] = encoder
+	return encoder
+}
+
+func LookupTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
+	tokenEncoderMapRWMux.RLock()
+	defer tokenEncoderMapRWMux.RUnlock()
+	return tokenEncoderMap[encoding]
 }
 
 // ================================= OpenAIEncoder ====================================
@@ -51,13 +69,17 @@ type OpenAIEncoder struct {
 	Encoder *tiktoken.Tiktoken
 }
 
-func NewOpenAIEncoder(encoding TokenEncoding) *OpenAIEncoder {
+func NewOpenAIEncoder(ctx *Context, encoding TokenEncoding) *OpenAIEncoder {
 	encoder, err := tiktoken.EncodingForModel(encoding.Model)
 	actualModel := encoding.Model
 
 	if err != nil {
 		actualModel = DefaultTokenEncodingModel[OpenAIEncoderProvider]
-		logging.Warn("openai's model %s not supported, falling back to default model: %s", encoding.Model, actualModel)
+		logging.Warn("[LLMTokenRateLimit] model not supported, falling back to default model",
+			"unsupported model", encoding.Model,
+			"default model", actualModel,
+			"requestID", ctx.Get(KeyRequestID),
+		)
 		encoder, _ = tiktoken.EncodingForModel(actualModel)
 	}
 

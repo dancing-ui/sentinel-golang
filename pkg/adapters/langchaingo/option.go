@@ -70,7 +70,7 @@ func WithUsedTokenInfosExtract(fn func(interface{}) *llmtokenratelimit.UsedToken
 
 func evaluateOptions(opts ...Option) *options {
 	optCopy := &options{
-		defaultResource: llmtokenratelimit.DefaultResource,
+		defaultResource: llmtokenratelimit.DefaultResourcePattern,
 	}
 	for _, opt := range opts {
 		if opt != nil {
