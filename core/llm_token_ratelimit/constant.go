@@ -20,8 +20,8 @@ const (
 	DefaultIdentifierValuePattern string = ".*"
 	DefaultKeyPattern             string = ".*"
 
-	DefaultRedisServiceName  string = "127.0.0.1"
-	DefaultRedisServicePort  int32  = 6379
+	DefaultRedisAddrName     string = "127.0.0.1"
+	DefaultRedisAddrPort     int32  = 6379
 	DefaultRedisTimeout      int32  = 0 // milliseconds
 	DefaultRedisPoolSize     int32  = 10
 	DefaultRedisMinIdleConns int32  = 5

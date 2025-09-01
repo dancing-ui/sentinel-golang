@@ -138,7 +138,7 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 		}
 		entry.SetPair(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
 
-		entry.Exit() // Must be executed immediately after the Set function
+		entry.Exit() // Must be executed immediately after the SetPair function
 	}
 }
 

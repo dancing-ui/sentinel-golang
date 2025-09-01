@@ -275,7 +275,7 @@ func BenchmarkLLMWrapper_GenerateContent(b *testing.B) {
 	if _, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
 		{
 			Resource: ".*",
-			Strategy: llmtokenratelimit.PETA,
+			Strategy: llmtokenratelimit.FixedWindow,
 			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{
@@ -286,7 +286,7 @@ func BenchmarkLLMWrapper_GenerateContent(b *testing.B) {
 						{
 							Key: ".*",
 							Token: llmtokenratelimit.Token{
-								Number:        100000000000,
+								Number:        10000000000000,
 								CountStrategy: llmtokenratelimit.TotalTokens,
 							},
 							Time: llmtokenratelimit.Time{
@@ -298,6 +298,230 @@ func BenchmarkLLMWrapper_GenerateContent(b *testing.B) {
 				},
 			},
 		},
+		// {
+		// 	Resource: "test-resou.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resour.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resourc.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },{
+		// 	Resource: "test-resource.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resource-.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resource-a.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resource-al.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resource-all.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Resource: "test-resource-allo.*",
+		// 	Strategy: llmtokenratelimit.PETA,
+		// 	SpecificItems: []*llmtokenratelimit.SpecificItem{
+		// 		{
+		// 			Identifier: llmtokenratelimit.Identifier{
+		// 				Type:  llmtokenratelimit.Header,
+		// 				Value: ".*",
+		// 			},
+		// 			KeyItems: []*llmtokenratelimit.KeyItem{
+		// 				{
+		// 					Key: ".*",
+		// 					Token: llmtokenratelimit.Token{
+		// 						Number:        10000000000000,
+		// 						CountStrategy: llmtokenratelimit.TotalTokens,
+		// 					},
+		// 					Time: llmtokenratelimit.Time{
+		// 						Unit:  llmtokenratelimit.Second,
+		// 						Value: 5,
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// },
 	}); err != nil {
 		panic(err)
 	}

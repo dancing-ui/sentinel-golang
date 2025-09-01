@@ -91,11 +91,15 @@ type SpecificItem struct {
 	KeyItems   []*KeyItem `json:"keyItems" yaml:"keyItems"`
 }
 
+type RedisAddr struct {
+	Name string `json:"name" yaml:"name"`
+	Port int32  `json:"port" yaml:"port"`
+}
+
 type Redis struct {
-	ServiceName string `json:"serviceName" yaml:"serviceName"`
-	ServicePort int32  `json:"servicePort" yaml:"servicePort"`
-	Username    string `json:"username" yaml:"username"`
-	Password    string `json:"password" yaml:"password"`
+	Addrs    []*RedisAddr `json:"addrs" yaml:"addrs"`
+	Username string       `json:"username" yaml:"username"`
+	Password string       `json:"password" yaml:"password"`
 
 	DialTimeout  int32 `json:"dialTimeout" yaml:"dialTimeout"`
 	ReadTimeout  int32 `json:"readTimeout" yaml:"readTimeout"`
@@ -401,4 +405,18 @@ func (t *Time) convertToSeconds() int64 {
 	default:
 		return ErrorTimeDuration
 	}
+}
+
+func (r *Redis) String() string {
+	if r == nil {
+		return "Redis{nil}"
+	}
+	var addrs []string
+	for _, addr := range r.Addrs {
+		if addr != nil {
+			addrs = append(addrs, fmt.Sprintf("%s:%d", addr.Name, addr.Port))
+		}
+	}
+	return fmt.Sprintf("Redis{Addrs:[%s], Username:%s, Password:%s, DialTimeout:%d, ReadTimeout:%d, WriteTimeout:%d, PoolTimeout:%d, PoolSize:%d, MinIdleConns:%d, MaxRetries:%d}",
+		strings.Join(addrs, ", "), r.Username, "******", r.DialTimeout, r.ReadTimeout, r.WriteTimeout, r.PoolTimeout, r.PoolSize, r.MinIdleConns, r.MaxRetries)
 }

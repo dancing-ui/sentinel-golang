@@ -445,8 +445,9 @@ rules:
               value: 1
               unit: day
 redis:
-  serviceName: "localhost"
-  servicePort: 6379
+  addrs:
+    - name: "localhost"
+      port: 6380
   username: "redis-user"
   password: "redis-pass"
   timeout: 5
@@ -491,12 +492,12 @@ errorMessage: "Rate limit exceeded"
 	}
 
 	// Test Redis config
-	if config.Redis.ServiceName != "localhost" {
-		t.Errorf("Expected Redis service name 'localhost', got %q", config.Redis.ServiceName)
+	if config.Redis.Addrs[0].Name != "localhost" {
+		t.Errorf("Expected Redis addr name 'localhost', got %q", config.Redis.Addrs[0].Name)
 	}
 
-	if config.Redis.ServicePort != 6379 {
-		t.Errorf("Expected Redis port 6379, got %d", config.Redis.ServicePort)
+	if config.Redis.Addrs[0].Port != 6380 {
+		t.Errorf("Expected Redis addr port 6380, got %d", config.Redis.Addrs[0].Port)
 	}
 
 	// Test error config

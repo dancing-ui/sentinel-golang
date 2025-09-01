@@ -57,8 +57,27 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 		return fmt.Errorf("config is nil")
 	}
 
-	serviceName := cfg.ServiceName
-	servicePort := cfg.ServicePort
+	addrsMap := make(map[string]struct{}, len(cfg.Addrs))
+	for _, addr := range cfg.Addrs {
+		if addr == nil {
+			continue
+		}
+		if len(addr.Name) == 0 {
+			addr.Name = DefaultRedisAddrName
+		}
+		if addr.Port == 0 {
+			addr.Port = DefaultRedisAddrPort
+		}
+		addrsMap[fmt.Sprintf("%s:%d", addr.Name, addr.Port)] = struct{}{}
+	}
+	addrs := make([]string, 0, len(addrsMap))
+	for addr := range addrsMap {
+		addrs = append(addrs, addr)
+	}
+	if len(addrs) == 0 {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", DefaultRedisAddrName, DefaultRedisAddrPort))
+	}
+
 	dialTimeout := time.Duration(cfg.DialTimeout) * time.Millisecond
 	readTimeout := time.Duration(cfg.ReadTimeout) * time.Millisecond
 	writeTimeout := time.Duration(cfg.WriteTimeout) * time.Millisecond
@@ -67,12 +86,6 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 	minIdleConns := cfg.MinIdleConns
 	maxRetries := cfg.MaxRetries
 
-	if len(serviceName) == 0 {
-		serviceName = DefaultRedisServiceName
-	}
-	if servicePort == 0 {
-		servicePort = DefaultRedisServicePort
-	}
 	if dialTimeout == 0 {
 		dialTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
 	}
@@ -95,11 +108,9 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 		maxRetries = DefaultRedisMaxRetries
 	}
 
-	addr := fmt.Sprintf("%s:%d", serviceName, servicePort)
-
 	newClient := redis.NewClusterClient(
 		&redis.ClusterOptions{
-			Addrs: []string{addr},
+			Addrs: addrs,
 
 			Username: cfg.Username,
 			Password: cfg.Password,

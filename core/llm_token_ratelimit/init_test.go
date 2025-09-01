@@ -42,8 +42,9 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 				},
 			},
 			Redis: &Redis{
-				ServiceName: fmt.Sprintf("redis-%d", i),
-				ServicePort: int32(6379 + i),
+				Addrs: []*RedisAddr{
+					{Name: fmt.Sprintf("redis-%d", i), Port: int32(6379 + i)},
+				},
 			},
 			ErrorCode:    int32(i),
 			ErrorMessage: fmt.Sprintf("error-%d", i),
@@ -80,7 +81,7 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 						_ = cfg.Rules[0].ID // Access should not cause data race
 					}
 					if cfg.Redis != nil {
-						_ = cfg.Redis.ServiceName // Access should not cause data race
+						_ = cfg.Redis.Addrs // Access should not cause data race
 					}
 				}
 			}
@@ -187,8 +188,9 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 				},
 			},
 			Redis: &Redis{
-				ServiceName:  "localhost",
-				ServicePort:  6379,
+				Addrs: []*RedisAddr{
+					{Name: "localhost", Port: 6379},
+				},
 				DialTimeout:  5000,
 				ReadTimeout:  5000,
 				WriteTimeout: 5000,
