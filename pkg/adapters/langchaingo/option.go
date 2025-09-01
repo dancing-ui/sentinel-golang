@@ -71,6 +71,17 @@ func WithUsedTokenInfosExtract(fn func(interface{}) *llmtokenratelimit.UsedToken
 func evaluateOptions(opts ...Option) *options {
 	optCopy := &options{
 		defaultResource: llmtokenratelimit.DefaultResourcePattern,
+		promptsExtract: func(messages []llms.MessageContent) []string {
+			prompts := make([]string, 0, len(messages))
+			for _, msg := range messages {
+				for _, part := range msg.Parts {
+					if textPart, ok := part.(llms.TextContent); ok {
+						prompts = append(prompts, textPart.Text)
+					}
+				}
+			}
+			return prompts
+		},
 	}
 	for _, opt := range opts {
 		if opt != nil {

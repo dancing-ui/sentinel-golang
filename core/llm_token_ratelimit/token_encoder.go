@@ -21,7 +21,7 @@ import (
 	"sync"
 
 	"github.com/alibaba/sentinel-golang/logging"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"github.com/pkoukk/tiktoken-go"
 )
 

@@ -6,7 +6,6 @@ import (
 	"sync"
 )
 
-// TODO: Update to LRU Cache
 var (
 	regexCache = make(map[string]*regexp.Regexp)
 	cacheMu    sync.RWMutex

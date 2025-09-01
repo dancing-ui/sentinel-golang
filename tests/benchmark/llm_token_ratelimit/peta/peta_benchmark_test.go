@@ -26,7 +26,7 @@ import (
 	"math/rand"
 
 	"github.com/alibaba/sentinel-golang/util"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 )
 
 const (
@@ -155,11 +155,11 @@ func NewPETASimulator(keyPrefix string, timeWindow int64, tokenSize int) *PETASi
 		Username: "redis",
 		Password: "redis",
 	})
-	if err := client.Ping().Err(); err != nil {
+	if err := client.Ping(context.TODO()).Err(); err != nil {
 		fmt.Printf("Failed to connect to Redis: %v\n", err)
 		return nil
 	}
-	if err := client.FlushDB().Err(); err != nil {
+	if err := client.FlushDB(context.TODO()).Err(); err != nil {
 		fmt.Printf("Failed to flush Redis database: %v\n", err)
 		return nil
 	}
@@ -183,7 +183,7 @@ func (p *PETASimulator) Withhold(ctx *context.Context, slidingWindowKey string, 
 	keys := []string{slidingWindowKey, tokenBucketKey}
 	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
 
-	response, err := p.redisClient.Eval(p.withholdScript, keys, args...).Result()
+	response, err := p.redisClient.Eval(context.TODO(), p.withholdScript, keys, args...).Result()
 	if err != nil {
 		return 0, fmt.Errorf("error executing withhold script: %w", err)
 	}
@@ -208,7 +208,7 @@ func (p *PETASimulator) Correct(ctx *context.Context, slidingWindowKey string, t
 	keys := []string{slidingWindowKey, tokenBucketKey}
 	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), p.TokenSize, p.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
 
-	response, err := p.redisClient.Eval(p.correctScript, keys, args...).Result()
+	response, err := p.redisClient.Eval(context.TODO(), p.correctScript, keys, args...).Result()
 	if err != nil {
 		return 0, fmt.Errorf("error executing correct script: %w", err)
 	}
@@ -327,7 +327,7 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 				withholdStart := time.Now()
 				waitingTime, err := simulator.Withhold(&ctx, slidingWindowKey, tokenBucketKey, estimated)
 				withholdDuration := time.Since(withholdStart)
-				go stats.AddWithholdTime(withholdDuration)
+				stats.AddWithholdTime(withholdDuration)
 
 				if err != nil {
 					logger.Printf("Worker %d withhold error: %v", workerID, err)
@@ -335,10 +335,10 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 				}
 
 				logger.Printf("Worker %d costed %d estimated tokens", workerID, estimated)
-				go stats.AddEstimatedCount(estimated)
+				stats.AddEstimatedCount(estimated)
 
 				if waitingTime != 0 {
-					go stats.AddWaitingTime(time.Duration(waitingTime) * time.Millisecond)
+					stats.AddWaitingTime(time.Duration(waitingTime) * time.Millisecond)
 					logger.Printf("Worker %d waiting for %d milliseconds", workerID, waitingTime)
 					time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond) // Simulate waiting
 					continue
@@ -349,20 +349,20 @@ func runPETABenchmark(b *testing.B, pattern PredictionPattern, concurrency int, 
 				actual := pattern.GetActualTokens(estimated)
 
 				logger.Printf("Worker %d costed %d actual tokens", workerID, actual)
-				go stats.AddActualCount(actual)
+				stats.AddActualCount(actual)
 
 				correctStart := time.Now()
 				correctResult, err := simulator.Correct(&ctx, slidingWindowKey, tokenBucketKey, estimated, actual)
 				correctDuration := time.Since(correctStart)
-				go stats.AddCorrectTime(correctDuration)
+				stats.AddCorrectTime(correctDuration)
 
-				if err != nil || correctResult == 0 {
-					go stats.AddCorrectError()
+				if err != nil || correctResult != 0 {
+					stats.AddCorrectError()
 					logger.Printf("Worker %d correct error: %v", workerID, err)
 					continue
 				}
 
-				go stats.AddPass()
+				stats.AddPass()
 			}
 		}(i)
 	}

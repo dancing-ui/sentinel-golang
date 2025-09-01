@@ -48,8 +48,14 @@ func (f *HeaderChecker) Check(ctx *Context, infos *RequestInfos, identifier Iden
 	if f == nil {
 		return false
 	}
-	if infos == nil || infos.Headers == nil {
+	if infos == nil {
 		logging.Warn("[LLMTokenRateLimit] requestInfos is nil",
+			"requestID", ctx.Get(KeyRequestID),
+		)
+		return true // allow nil for global rate limit
+	}
+	if infos.Headers == nil {
+		logging.Warn("[LLMTokenRateLimit] requestInfos's Headers is nil",
 			"requestID", ctx.Get(KeyRequestID),
 		)
 		return true // allow nil for global rate limit

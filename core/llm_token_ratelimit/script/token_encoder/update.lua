@@ -21,7 +21,7 @@ local expiration = tonumber(ARGV[2])
 
 local ttl = redis.call('TTL', key)
 if ttl < 0 then
-    redis.call('SET', key, difference, 'EX', expiration)
+    redis.call('SET', key, difference, 'EX', expiration + 5)
     return {difference, expiration}
 end
 return {tonumber(redis.call('INCRBY', key, difference)), ttl}

@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 )
 
 type BenchmarkLogger struct {
@@ -107,11 +107,11 @@ func NewFixedWindowSimulator(timeWindow int64, tokenSize int) *FixedWindowSimula
 		Username: "redis",
 		Password: "redis",
 	})
-	if err := client.Ping().Err(); err != nil {
+	if err := client.Ping(context.TODO()).Err(); err != nil {
 		fmt.Printf("Failed to connect to Redis: %v\n", err)
 		return nil
 	}
-	if err := client.FlushDB().Err(); err != nil {
+	if err := client.FlushDB(context.TODO()).Err(); err != nil {
 		fmt.Printf("Failed to flush Redis database: %v\n", err)
 		return nil
 	}
@@ -134,7 +134,7 @@ func (p *FixedWindowSimulator) Query(ctx *context.Context, key string) (int, err
 	keys := []string{key}
 	args := []interface{}{p.TokenSize, p.TimeWindow * 1000}
 
-	response, err := p.redisClient.Eval(p.queryScript, keys, args...).Result()
+	response, err := p.redisClient.Eval(context.TODO(), p.queryScript, keys, args...).Result()
 	if err != nil {
 		return 0, fmt.Errorf("error executing query script: %w", err)
 	}
@@ -156,7 +156,7 @@ func (p *FixedWindowSimulator) Update(ctx *context.Context, key string, actualTo
 	keys := []string{key}
 	args := []interface{}{p.TokenSize, p.TimeWindow * 1000, actualToken}
 
-	response, err := p.redisClient.Eval(p.updateScript, keys, args...).Result()
+	response, err := p.redisClient.Eval(context.TODO(), p.updateScript, keys, args...).Result()
 	if err != nil {
 		return fmt.Errorf("error executing update script: %w", err)
 	}

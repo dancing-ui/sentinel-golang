@@ -15,11 +15,12 @@
 package llmtokenratelimit
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
-	redis "github.com/go-redis/redis/v7"
+	redis "github.com/go-redis/redis/v8"
 )
 
 type SafeRedisClient struct {
@@ -31,6 +32,21 @@ var globalRedisClient = NewGlobalRedisClient()
 
 func NewGlobalRedisClient() *SafeRedisClient {
 	return &SafeRedisClient{}
+}
+
+func (c *SafeRedisClient) SetRedisClient(client *redis.ClusterClient) error {
+	if c == nil {
+		return fmt.Errorf("safe redis client is nil")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.client != nil {
+		c.client.Close()
+	}
+
+	c.client = client
+	return nil
 }
 
 func (c *SafeRedisClient) Init(cfg *Redis) error {
@@ -103,12 +119,12 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 		return fmt.Errorf("new redis client is nil")
 	}
 
-	if _, err := newClient.Ping().Result(); err != nil {
+	if _, err := newClient.Ping(context.TODO()).Result(); err != nil {
 		return fmt.Errorf("failed to connect to redis cluster: %v", err)
 	}
 	// Perform lock replacement only after the new client successfully connects;
 	// otherwise, a deadlock will occur if the connection fails
-	return c.updateClient(newClient)
+	return c.SetRedisClient(newClient)
 }
 
 func (c *SafeRedisClient) Eval(script string, keys []string, args ...interface{}) (interface{}, error) {
@@ -122,7 +138,7 @@ func (c *SafeRedisClient) Eval(script string, keys []string, args ...interface{}
 		return nil, fmt.Errorf("redis client is not initialized")
 	}
 
-	return c.client.Eval(script, keys, args...).Result()
+	return c.client.Eval(context.TODO(), script, keys, args...).Result()
 }
 
 func (c *SafeRedisClient) Set(key string, value interface{}, expiration time.Duration) error {
@@ -136,7 +152,7 @@ func (c *SafeRedisClient) Set(key string, value interface{}, expiration time.Dur
 		return fmt.Errorf("redis client is not initialized")
 	}
 
-	return c.client.Set(key, value, expiration).Err()
+	return c.client.Set(context.TODO(), key, value, expiration).Err()
 }
 
 func (c *SafeRedisClient) Get(key string) (*redis.StringCmd, error) {
@@ -150,7 +166,7 @@ func (c *SafeRedisClient) Get(key string) (*redis.StringCmd, error) {
 		return nil, fmt.Errorf("redis client is not initialized")
 	}
 
-	return c.client.Get(key), nil
+	return c.client.Get(context.TODO(), key), nil
 }
 
 func (c *SafeRedisClient) Close() error {
@@ -163,20 +179,5 @@ func (c *SafeRedisClient) Close() error {
 	if c.client != nil {
 		return c.client.Close()
 	}
-	return nil
-}
-
-func (c *SafeRedisClient) updateClient(newClient *redis.ClusterClient) error {
-	if c == nil {
-		return fmt.Errorf("safe redis client is nil")
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.client != nil {
-		c.client.Close()
-	}
-
-	c.client = newClient
 	return nil
 }

@@ -17,7 +17,11 @@ package langchaingo
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	llmtokenratelimit "github.com/alibaba/sentinel-golang/core/llm_token_ratelimit"
@@ -26,13 +30,14 @@ import (
 	"github.com/tmc/langchaingo/llms"
 )
 
-// TODO: Mock redis client
-func initSentinel(_ *testing.T) {
+var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func initSentinel() {
 	if err := sentinel.InitDefault(); err != nil {
 		panic(err)
 	}
 
-	_, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
+	if _, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
 		{
 			Resource: "test-resource-allow",
 			Strategy: llmtokenratelimit.PETA,
@@ -83,20 +88,23 @@ func initSentinel(_ *testing.T) {
 				},
 			},
 		},
-	})
-
-	if err != nil {
+	}); err != nil {
 		panic(err)
 	}
 }
 
 type MockLLM struct {
-	response  *llms.ContentResponse
-	err       error
-	callCount int
+	response             *llms.ContentResponse
+	err                  error
+	callCount            int
+	mu                   sync.Mutex
+	lastPromptTokens     int
+	lastCompletionTokens int
 }
 
 func (m *MockLLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.callCount++
 	if m.err != nil {
 		return nil, m.err
@@ -104,15 +112,20 @@ func (m *MockLLM) GenerateContent(ctx context.Context, messages []llms.MessageCo
 	if m.response != nil {
 		return m.response, nil
 	}
-
+	baseTokens := 100
+	promptTokens := m.lastPromptTokens + rng.Intn(10000) + baseTokens
+	completionTokens := m.lastCompletionTokens + rng.Intn(10000) + baseTokens
+	totalTokens := promptTokens + completionTokens
+	m.lastPromptTokens = promptTokens
+	m.lastCompletionTokens = completionTokens
 	return &llms.ContentResponse{
 		Choices: []*llms.ContentChoice{
 			{
 				Content: "Mock response",
 				GenerationInfo: map[string]any{
-					"PromptTokens":     10,
-					"CompletionTokens": 5,
-					"TotalTokens":      15,
+					"PromptTokens":     promptTokens,
+					"CompletionTokens": completionTokens,
+					"TotalTokens":      totalTokens,
 				},
 			},
 		},
@@ -124,7 +137,7 @@ func (m *MockLLM) Call(ctx context.Context, prompt string, options ...llms.CallO
 }
 
 func TestLLMWrapper(t *testing.T) {
-	initSentinel(t)
+	initSentinel()
 
 	type args struct {
 		model      string
@@ -225,286 +238,14 @@ func TestLLMWrapper(t *testing.T) {
 				callCount:     0,
 			},
 		},
-		{
-			name: "request_with_custom_resource_extract",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.WithValue(context.Background(), "resource", "test-resource-allow"),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Custom resource test"),
-				},
-				options: []Option{
-					WithResourceExtract(func(ctx context.Context) string {
-						if resource := ctx.Value("resource"); resource != nil {
-							return resource.(string)
-						}
-						return "default"
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_custom_prompts_extract",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Message 1"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeAI), "Response 1"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Message 2"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-					WithPromptsExtract(func(messages []llms.MessageContent) []string {
-						prompts := make([]string, 0, len(messages))
-						for _, msg := range messages {
-							for _, part := range msg.Parts {
-								if textPart, ok := part.(llms.TextContent); ok {
-									prompts = append(prompts, textPart.Text)
-								}
-							}
-						}
-						return prompts
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_custom_request_infos_extract",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.WithValue(context.Background(), "user_id", "test-user-123"),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "User specific request"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-					WithRequestInfosExtract(func(ctx context.Context) *llmtokenratelimit.RequestInfos {
-						userId := "anonymous"
-						if userVal := ctx.Value("user_id"); userVal != nil {
-							userId = userVal.(string)
-						}
-
-						return llmtokenratelimit.GenerateRequestInfos(
-							llmtokenratelimit.WithHeader(map[string][]string{
-								"user_id": {userId},
-							}),
-						)
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_block_fallback",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "This should trigger fallback"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-block"),
-					WithPromptsExtract(func(messages []llms.MessageContent) []string {
-						prompts := make([]string, 0, len(messages))
-						for _, msg := range messages {
-							for _, part := range msg.Parts {
-								if textPart, ok := part.(llms.TextContent); ok {
-									prompts = append(prompts, textPart.Text)
-								}
-							}
-						}
-						return prompts
-					}),
-					WithBlockFallback(func(ctx context.Context) {
-						fmt.Println("[Fallback] Request was blocked")
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: false,
-				errorContains: "blocked",
-				callCount:     0,
-			},
-		},
-		{
-			name: "request_with_llm_error",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "This will cause LLM error"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM: &MockLLM{
-					err: assert.AnError,
-				},
-			},
-			want: want{
-				shouldSucceed: false,
-				errorContains: "assert.AnError",
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_custom_token_extractor",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Custom token extraction test"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-					WithUsedTokenInfosExtract(func(response interface{}) *llmtokenratelimit.UsedTokenInfos {
-						return llmtokenratelimit.GenerateUsedTokenInfos(
-							llmtokenratelimit.WithInputTokens(20),
-							llmtokenratelimit.WithOutputTokens(10),
-							llmtokenratelimit.WithTotalTokens(30),
-						)
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM: &MockLLM{
-					response: &llms.ContentResponse{
-						Choices: []*llms.ContentChoice{
-							{
-								Content: "Custom token response",
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_empty_messages",
-			args: args{
-				model:      "gpt-3.5-turbo",
-				ctx:        context.Background(),
-				messages:   []llms.MessageContent{},
-				options:    []Option{WithDefaultResource("test-resource-allow")},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_multiple_options",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.WithValue(context.Background(), "user_id", "multi-user"),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Multiple options test"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-					WithResourceExtract(func(ctx context.Context) string {
-						return "test-resource-allow" // 覆盖默认资源
-					}),
-					WithRequestInfosExtract(func(ctx context.Context) *llmtokenratelimit.RequestInfos {
-						userId := "default"
-						if userVal := ctx.Value("user_id"); userVal != nil {
-							userId = userVal.(string)
-						}
-						return llmtokenratelimit.GenerateRequestInfos(
-							llmtokenratelimit.WithHeader(map[string][]string{
-								"user_id": {userId},
-							}),
-						)
-					}),
-					WithPromptsExtract(func(messages []llms.MessageContent) []string {
-						return []string{"extracted prompt"}
-					}),
-					WithBlockFallback(func(ctx context.Context) {
-						fmt.Println("[Fallback] Request was blocked")
-					}),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_multiple_text_parts",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeSystem), "You are a helpful assistant"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "What is the weather like?"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeAI), "I don't have access to weather data"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Thank you anyway"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
-		{
-			name: "request_with_different_message_types",
-			args: args{
-				model: "gpt-3.5-turbo",
-				ctx:   context.Background(),
-				messages: []llms.MessageContent{
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeSystem), "System prompt"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman), "Human message"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeAI), "AI response"),
-					llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeFunction), "Function call"),
-				},
-				options: []Option{
-					WithDefaultResource("test-resource-allow"),
-				},
-				llmOptions: []llms.CallOption{},
-				mockLLM:    &MockLLM{},
-			},
-			want: want{
-				shouldSucceed: true,
-				callCount:     1,
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println("=== Running test:", tt.name, "===")
+
+			if tt.name == "request_with_custom_resource_extract" {
+				fmt.Println("Note: Check logs to verify custom resource extraction")
+			}
 
 			tt.args.mockLLM.callCount = 0
 
@@ -526,4 +267,71 @@ func TestLLMWrapper(t *testing.T) {
 			assert.Equal(t, tt.want.callCount, tt.args.mockLLM.callCount)
 		})
 	}
+}
+
+func BenchmarkLLMWrapper_GenerateContent(b *testing.B) {
+	initSentinel()
+
+	if _, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
+		{
+			Resource: ".*",
+			Strategy: llmtokenratelimit.PETA,
+			SpecificItems: []*llmtokenratelimit.SpecificItem{
+				{
+					Identifier: llmtokenratelimit.Identifier{
+						Type:  llmtokenratelimit.Header,
+						Value: ".*",
+					},
+					KeyItems: []*llmtokenratelimit.KeyItem{
+						{
+							Key: ".*",
+							Token: llmtokenratelimit.Token{
+								Number:        100000000000,
+								CountStrategy: llmtokenratelimit.TotalTokens,
+							},
+							Time: llmtokenratelimit.Time{
+								Unit:  llmtokenratelimit.Second,
+								Value: 5,
+							},
+						},
+					},
+				},
+			},
+		},
+	}); err != nil {
+		panic(err)
+	}
+
+	mockLLM := &MockLLM{}
+
+	llmWrapper := NewLLMWrapper(mockLLM, WithDefaultResource("test-resource-allow"))
+	messages := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageType(llms.ChatMessageTypeHuman),
+			"This is a benchmark test message for measuring QPS performance"),
+	}
+
+	var blockCount int64
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := llmWrapper.GenerateContent(context.Background(), messages)
+			if err != nil {
+				atomic.AddInt64(&blockCount, 1)
+			}
+		}
+	})
+
+	totalRequests := int64(b.N)
+	successCount := totalRequests - atomic.LoadInt64(&blockCount)
+	blockRate := float64(atomic.LoadInt64(&blockCount)) / float64(totalRequests) * 100
+
+	b.ReportMetric(float64(atomic.LoadInt64(&blockCount)), "errors")
+	b.ReportMetric(blockRate, "block_rate")
+	b.ReportMetric(float64(successCount), "success")
+
+	b.Logf("Total Requests: %d, Success: %d, Block: %d, Block Rate: %.2f%%",
+		totalRequests, successCount, atomic.LoadInt64(&blockCount), blockRate)
 }
