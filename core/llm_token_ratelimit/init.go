@@ -18,23 +18,6 @@ import (
 	"fmt"
 )
 
-func initRules() error {
-	cfg := globalConfig.GetConfig()
-	if cfg == nil {
-		return fmt.Errorf("config is nil")
-	}
-
-	if len(cfg.Rules) == 0 {
-		return nil
-	}
-
-	if _, err := LoadRules(cfg.Rules); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func Init(cfg *Config) error {
 	if globalConfig == nil {
 		return fmt.Errorf("global config is nil")
@@ -55,7 +38,7 @@ func Init(cfg *Config) error {
 	if err := globalRedisClient.Init(cfg.Redis); err != nil {
 		return err
 	}
-	if err := initRules(); err != nil {
+	if _, err := LoadRules(cfg.Rules); err != nil {
 		return err
 	}
 	return nil

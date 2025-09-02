@@ -254,79 +254,6 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 	}
 }
 
-func TestInitRules_ConcurrentSafety(t *testing.T) {
-	// Save original state
-	originalConfig := globalConfig.GetConfig()
-	defer func() {
-		if originalConfig != nil {
-			globalConfig.SetConfig(originalConfig)
-		}
-	}()
-
-	// Set a test config
-	testConfig := &Config{
-		Rules: []*Rule{
-			{
-				ID:       "test-rule-1",
-				Resource: "/api/test",
-				Strategy: FixedWindow,
-				SpecificItems: []*SpecificItem{
-					{
-						Identifier: Identifier{Type: Header, Value: "*"},
-						KeyItems: []*KeyItem{
-							{
-								Key:   "*",
-								Token: Token{Number: 1000, CountStrategy: TotalTokens},
-								Time:  Time{Unit: Second, Value: 60},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	err := globalConfig.SetConfig(testConfig)
-	require.NoError(t, err)
-
-	const numGoroutines = 30
-	var wg sync.WaitGroup
-	errors := make(chan error, numGoroutines)
-
-	// Concurrent initRules calls
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-			if err := initRules(); err != nil {
-				errors <- fmt.Errorf("initRules failed in goroutine %d: %v", id, err)
-			}
-		}(i)
-	}
-
-	// Wait for completion
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// Success
-	case err := <-errors:
-		t.Fatal(err)
-	case <-time.After(15 * time.Second):
-		t.Fatal("Test timed out")
-	}
-
-	// Check for any remaining errors
-	close(errors)
-	for err := range errors {
-		t.Errorf("Concurrent error: %v", err)
-	}
-}
-
 // Test that concurrent access doesn't cause data corruption
 func TestSafeConfig_DataIntegrity(t *testing.T) {
 	config := &SafeConfig{}
@@ -534,9 +461,6 @@ func TestGlobalConfig_ConcurrentAccess(t *testing.T) {
 					if cfg != nil {
 						_ = cfg.ErrorCode // Basic access
 					}
-				case 2:
-					// Call initRules (which uses globalConfig.GetConfig internally)
-					_ = initRules() // Ignore errors as rules might not be valid without proper setup
 				}
 			}
 		}(i)

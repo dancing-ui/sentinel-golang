@@ -152,34 +152,6 @@ func (c *SafeRedisClient) Eval(script string, keys []string, args ...interface{}
 	return c.client.Eval(context.TODO(), script, keys, args...).Result()
 }
 
-func (c *SafeRedisClient) Set(key string, value interface{}, expiration time.Duration) error {
-	if c == nil {
-		return fmt.Errorf("safe redis client is nil")
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if c.client == nil {
-		return fmt.Errorf("redis client is not initialized")
-	}
-
-	return c.client.Set(context.TODO(), key, value, expiration).Err()
-}
-
-func (c *SafeRedisClient) Get(key string) (*redis.StringCmd, error) {
-	if c == nil {
-		return nil, fmt.Errorf("safe redis client is nil")
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if c.client == nil {
-		return nil, fmt.Errorf("redis client is not initialized")
-	}
-
-	return c.client.Get(context.TODO(), key), nil
-}
-
 func (c *SafeRedisClient) Close() error {
 	if c == nil {
 		return fmt.Errorf("safe redis client is nil")

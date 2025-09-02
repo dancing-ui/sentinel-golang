@@ -32,7 +32,7 @@ func (r *Rule) ResourceName() string {
 	return r.Resource
 }
 
-// TODO: update rule string and tests
+// TODO: update rule string and tests when rule changed
 func (r *Rule) String() string {
 	if r == nil {
 		return "Rule{nil}"
