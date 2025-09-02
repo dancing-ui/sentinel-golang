@@ -177,13 +177,15 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return false
 	}
+	defer func() {
+		ctx.Set(KeyResponseHeaders, responseHeader)
+	}()
 	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
 	if waitingTime != PETANoWaiting {
 		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", result[0]))
 		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(waitingTime) * time.Millisecond).String())
 		return false
 	}
-	ctx.Set(KeyResponseHeaders, responseHeader)
 	c.cacheEstimatedToken(rule, result[2])
 	return true
 }

@@ -90,12 +90,7 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
 end
 -- Update the difference from the token encoder
 local difference = actual - estimated
-local ttl = redis.call('PTTL', token_encoder_key)
-if ttl < 0 then
-    redis.call('SET', token_encoder_key, difference, 'PX', window_size + 5000)
-else
-    redis.call('INCRBY', token_encoder_key, difference)
-end
+redis.call('SET', token_encoder_key, difference, 'PX', window_size + 5000)
 -- Correction result for reservation
 local correct_result = 0
 if estimated < 0 or actual < 0 then
