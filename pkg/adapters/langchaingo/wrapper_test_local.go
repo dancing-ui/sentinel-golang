@@ -275,7 +275,7 @@ func BenchmarkLLMWrapper_GenerateContent(b *testing.B) {
 	if _, err := llmtokenratelimit.LoadRules([]*llmtokenratelimit.Rule{
 		{
 			Resource: ".*",
-			Strategy: llmtokenratelimit.FixedWindow,
+			Strategy: llmtokenratelimit.PETA,
 			SpecificItems: []*llmtokenratelimit.SpecificItem{
 				{
 					Identifier: llmtokenratelimit.Identifier{

@@ -134,11 +134,6 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return true
 	}
-	logging.Info("[LLMTokenRateLimit] estimated token",
-		"limitKey", rule.LimitKey,
-		"estimatedToken", estimatedToken,
-		"requestID", ctx.Get(KeyRequestID),
-	)
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
@@ -199,7 +194,7 @@ func (c *PETAChecker) countTokens(ctx *Context, prompts []string, rule *MatchedR
 				return 0, fmt.Errorf("failed to create token encoder for encoding")
 			}
 		}
-		length, err := encoder.CountTokens(prompts, rule)
+		length, err := encoder.CountTokens(ctx, prompts, rule)
 		if err != nil {
 			return 0, fmt.Errorf("failed to count tokens: %v", err)
 		}

@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"github.com/alibaba/sentinel-golang/logging"
-	"github.com/go-redis/redis/v8"
 	"github.com/pkoukk/tiktoken-go"
 )
 
@@ -35,7 +34,7 @@ var (
 var globalTokenEncoderUpdateScript string
 
 type TokenEncoder interface {
-	CountTokens(prompts []string, rule *MatchedRule) (int, error)
+	CountTokens(ctx *Context, prompts []string, rule *MatchedRule) (int, error)
 }
 
 func NewTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
@@ -63,6 +62,9 @@ func LookupTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
 }
 
 // ================================= OpenAIEncoder ====================================
+//
+//go:embed script/token_encoder/query.lua
+var globalTokenEncoderQueryScript string
 
 type OpenAIEncoder struct {
 	Model   string
@@ -89,7 +91,7 @@ func NewOpenAIEncoder(ctx *Context, encoding TokenEncoding) *OpenAIEncoder {
 	}
 }
 
-func (e *OpenAIEncoder) CountTokens(prompts []string, rule *MatchedRule) (int, error) {
+func (e *OpenAIEncoder) CountTokens(ctx *Context, prompts []string, rule *MatchedRule) (int, error) {
 	if e == nil {
 		return 0, fmt.Errorf("OpenAIEncoder is nil")
 	}
@@ -106,30 +108,38 @@ func (e *OpenAIEncoder) CountTokens(prompts []string, rule *MatchedRule) (int, e
 	}
 	token := e.Encoder.Encode(builder.String(), nil, nil)
 	if len(token) > 0 {
-		difference, err := e.queryDifference(rule)
+		estimatedToken, err := e.countTokens(ctx, rule, len(token))
 		if err != nil {
 			return 0, err
 		}
-		return len(token) + difference, nil
+		return estimatedToken, nil
 	}
 	return 0, nil
 }
 
-func (e *OpenAIEncoder) queryDifference(rule *MatchedRule) (int, error) {
+func (e *OpenAIEncoder) countTokens(ctx *Context, rule *MatchedRule, tokenization int) (int, error) {
 	if e == nil {
 		return 0, fmt.Errorf("OpenAIEncoder is nil")
 	}
 	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, OpenAIEncoderProvider.String(), e.Model)
-	response, err := globalRedisClient.Get(key)
+
+	keys := []string{key}
+	args := []interface{}{tokenization, rule.TimeWindow * 1000}
+
+	response, err := globalRedisClient.Eval(globalTokenEncoderQueryScript, keys, args...)
 	if err != nil {
 		return 0, err
 	}
-	value, err := response.Int()
-	if err != nil {
-		if err == redis.Nil {
-			return 0, nil
-		}
-		return 0, err
+	result := parseRedisResponse(ctx, response)
+	if result == nil || len(result) != 2 {
+		return 0, fmt.Errorf("unexpected redis response: %v", response)
 	}
-	return value, nil
+
+	logging.Info("[LLMTokenRateLimit] estimated token",
+		"limitKey", rule.LimitKey,
+		"estimatedToken", result[0],
+		"difference", result[1],
+		"requestID", ctx.Get(KeyRequestID),
+	)
+	return int(result[0]), nil
 }

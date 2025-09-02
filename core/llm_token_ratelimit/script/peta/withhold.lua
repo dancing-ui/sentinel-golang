@@ -70,7 +70,7 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
     redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
 end
 -- Check if the request can be satisfied
-if max_capacity < estimated then -- If max capacity is less than estimated consumption, return -1 indicating rejection
+if max_capacity < estimated or estimated < 0 then -- If max capacity is less than estimated consumption or estimated is less than 0, return -1 indicating rejection
     waiting_time = -1
 elseif current_capacity < estimated then -- If current capacity is insufficient to satisfy estimated consumption, calculate waiting time
     -- Get the earliest valid timestamp

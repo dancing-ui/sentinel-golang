@@ -15,7 +15,6 @@
 package llmtokenratelimit
 
 import (
-	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/alibaba/sentinel-golang/util"
 )
 
@@ -26,9 +25,6 @@ func (f *AllIdentifierChecker) Check(ctx *Context, infos *RequestInfos, identifi
 		return false
 	}
 	if infos == nil {
-		logging.Warn("[LLMTokenRateLimit] requestInfos is nil",
-			"requestID", ctx.Get(KeyRequestID),
-		)
 		return true // allow nil for global rate limit
 	}
 	for identifierType, checker := range globalRuleMatcher.IdentifierCheckers {
@@ -49,15 +45,9 @@ func (f *HeaderChecker) Check(ctx *Context, infos *RequestInfos, identifier Iden
 		return false
 	}
 	if infos == nil {
-		logging.Warn("[LLMTokenRateLimit] requestInfos is nil",
-			"requestID", ctx.Get(KeyRequestID),
-		)
 		return true // allow nil for global rate limit
 	}
 	if infos.Headers == nil {
-		logging.Warn("[LLMTokenRateLimit] requestInfos's Headers is nil",
-			"requestID", ctx.Get(KeyRequestID),
-		)
 		return true // allow nil for global rate limit
 	}
 	for key, values := range infos.Headers {

@@ -87,12 +87,14 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
     redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
 end
 
--- Calculate prediction error
-local predicted_error = math.abs(actual - estimated)
 -- Correction result for reservation
 local correct_result = 0
--- Mainly handle underestimation cases to properly limit actual usage; overestimation may reject requests but won't affect downstream services
-if estimated < actual then -- Underestimation
+if estimated < 0 or actual < 0 then
+    correct_result = 3 -- Invalid value
+elseif estimated < actual then -- Underestimation
+    -- Mainly handle underestimation cases to properly limit actual usage; overestimation may reject requests but won't affect downstream services
+    -- Calculate prediction error
+    local predicted_error = math.abs(actual - estimated)
     -- directly deduct all underestimated tokens
     current_capacity = current_capacity - predicted_error
     redis.call('HSET', token_bucket_key, 'capacity', current_capacity)

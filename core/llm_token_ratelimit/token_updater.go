@@ -141,7 +141,7 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	}
 
 	correctResult := result[0]
-	if correctResult != PETACorrectOK {
+	if correctResult != PETACorrectOK && correctResult != PETACorrectOverestimateError { // Temporarily unable to handle overestimation cases
 		logging.Warn("[LLMTokenRateLimit] failed to update the limit key",
 			"limitKey", rule.LimitKey,
 			"correctResult", correctResult,
@@ -149,17 +149,17 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		)
 		return
 	}
-	u.updateDifference(ctx, rule, actualToken-rule.EstimatedToken, rule.TimeWindow)
+	u.updateDifference(ctx, rule, actualToken-rule.EstimatedToken)
 }
 
-func (u *PETAUpdater) updateDifference(ctx *Context, rule *MatchedRule, difference int, expiration int64) {
+func (u *PETAUpdater) updateDifference(ctx *Context, rule *MatchedRule, difference int) {
 	if u == nil {
 		return
 	}
 	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, rule.Encoding.Provider.String(), rule.Encoding.Model)
 
 	keys := []string{key}
-	args := []interface{}{difference, expiration}
+	args := []interface{}{difference, rule.TimeWindow * 1000}
 
 	response, err := globalRedisClient.Eval(globalTokenEncoderUpdateScript, keys, args...)
 	if err != nil {
@@ -171,7 +171,7 @@ func (u *PETAUpdater) updateDifference(ctx *Context, rule *MatchedRule, differen
 		return
 	}
 	result := parseRedisResponse(ctx, response)
-	if result == nil || len(result) != 2 {
+	if result == nil || len(result) != 1 {
 		logging.Error(errors.New("invalid redis response"),
 			"invalid redis response in llm_token_ratelimit.PETAUpdater.updateDifference()",
 			"response", response,
