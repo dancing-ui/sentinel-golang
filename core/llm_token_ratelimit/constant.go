@@ -84,5 +84,5 @@ const (
 
 // ================================= OpenAIEncoder ============================
 const (
-	TokenEncoderKeyFormat string = "%s:token-encoder:%s:%s" // redisRatelimitKey, provider, model
+	TokenEncoderKeyFormat string = "{shard-%s}:token-encoder:%s:%s:%s" // hashTag, provider, model, redisRatelimitKey
 )

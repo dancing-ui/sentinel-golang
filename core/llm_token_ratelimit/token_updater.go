@@ -112,16 +112,18 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		return
 	}
 	actualToken := calculator.Calculate(ctx, infos)
-	logging.Info("[LLMTokenRateLimit] actual token",
+	logging.Info("[LLMTokenRateLimit] actual infos",
 		"limitKey", rule.LimitKey,
-		"actualToken", actualToken,
+		"estimated_token", rule.EstimatedToken,
+		"actual_token", actualToken,
 		"requestID", ctx.Get(KeyRequestID),
 	)
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
+	tokenEncoderKey := fmt.Sprintf(TokenEncoderKeyFormat, generateHash(rule.LimitKey), rule.Encoding.Provider.String(), rule.Encoding.Model, rule.LimitKey)
 
-	keys := []string{slidingWindowKey, tokenBucketKey}
+	keys := []string{slidingWindowKey, tokenBucketKey, tokenEncoderKey}
 	args := []interface{}{rule.EstimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, actualToken, generateRandomString(PETARandomStringLength)}
 	response, err := globalRedisClient.Eval(globalPETACorrectScript, keys, args...)
 	if err != nil {
@@ -149,39 +151,4 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		)
 		return
 	}
-	u.updateDifference(ctx, rule, actualToken-rule.EstimatedToken)
-}
-
-func (u *PETAUpdater) updateDifference(ctx *Context, rule *MatchedRule, difference int) {
-	if u == nil {
-		return
-	}
-	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, rule.Encoding.Provider.String(), rule.Encoding.Model)
-
-	keys := []string{key}
-	args := []interface{}{difference, rule.TimeWindow * 1000}
-
-	response, err := globalRedisClient.Eval(globalTokenEncoderUpdateScript, keys, args...)
-	if err != nil {
-		logging.Error(err, "failed to update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()",
-			"key", key,
-			"difference", difference,
-			"requestID", ctx.Get(KeyRequestID),
-		)
-		return
-	}
-	result := parseRedisResponse(ctx, response)
-	if result == nil || len(result) != 1 {
-		logging.Error(errors.New("invalid redis response"),
-			"invalid redis response in llm_token_ratelimit.PETAUpdater.updateDifference()",
-			"response", response,
-			"requestID", ctx.Get(KeyRequestID),
-		)
-		return
-	}
-	logging.Info("[LLMTokenRateLimit] successfully update the difference in llm_token_ratelimit.PETAUpdater.updateDifference()",
-		"key", key,
-		"difference", result[0],
-		"requestID", ctx.Get(KeyRequestID),
-	)
 }

@@ -127,7 +127,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		prompts = reqInfos.Prompts
 	}
 
-	estimatedToken, err := c.countTokens(ctx, prompts, rule)
+	length, err := c.countTokens(ctx, prompts, rule)
 	if err != nil {
 		logging.Error(err, "failed to count tokens in llm_token_ratelimit.PETAChecker.checkLimitKey()",
 			"requestID", ctx.Get(KeyRequestID),
@@ -137,9 +137,10 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
+	tokenEncoderKey := fmt.Sprintf(TokenEncoderKeyFormat, generateHash(rule.LimitKey), rule.Encoding.Provider.String(), rule.Encoding.Model, rule.LimitKey)
 
-	keys := []string{slidingWindowKey, tokenBucketKey}
-	args := []interface{}{estimatedToken, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
+	keys := []string{slidingWindowKey, tokenBucketKey, tokenEncoderKey}
+	args := []interface{}{length, util.CurrentTimeMillis(), rule.TokenSize, rule.TimeWindow * 1000, generateRandomString(PETARandomStringLength)}
 	response, err := globalRedisClient.Eval(globalPETAWithholdScript, keys, args...)
 	if err != nil {
 		logging.Error(err, "failed to execute redis script in llm_token_ratelimit.PETAChecker.checkLimitKey()",
@@ -148,7 +149,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		return true
 	}
 	result := parseRedisResponse(ctx, response)
-	if result == nil || len(result) != 2 {
+	if result == nil || len(result) != 4 {
 		logging.Error(errors.New("invalid redis response"),
 			"invalid redis response in llm_token_ratelimit.PETAChecker.checkLimitKey()",
 			"response", response,
@@ -156,6 +157,15 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return true
 	}
+	logging.Info("[LLMTokenRateLimit] estimated infos",
+		"limitKey", rule.LimitKey,
+		"current_capacity", result[0],
+		"waiting_time(ms)", result[1],
+		"estimated_token", result[2],
+		"difference", result[3],
+		"tokenization_length", length,
+		"requestID", ctx.Get(KeyRequestID),
+	)
 
 	// TODO: add waiting and timeout callback
 	waitingTime := result[1]
@@ -174,7 +184,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		return false
 	}
 	ctx.Set(KeyResponseHeaders, responseHeader)
-	c.cacheEstimatedToken(rule, estimatedToken)
+	c.cacheEstimatedToken(rule, result[2])
 	return true
 }
 
@@ -203,7 +213,7 @@ func (c *PETAChecker) countTokens(ctx *Context, prompts []string, rule *MatchedR
 	return 0, fmt.Errorf("unknown count strategy: %s", rule.CountStrategy.String())
 }
 
-func (c *PETAChecker) cacheEstimatedToken(rule *MatchedRule, count int) {
+func (c *PETAChecker) cacheEstimatedToken(rule *MatchedRule, count int64) {
 	if c == nil || rule == nil {
 		return
 	}

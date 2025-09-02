@@ -30,9 +30,6 @@ var (
 	tokenEncoderMapRWMux = &sync.RWMutex{}
 )
 
-//go:embed script/token_encoder/update.lua
-var globalTokenEncoderUpdateScript string
-
 type TokenEncoder interface {
 	CountTokens(ctx *Context, prompts []string, rule *MatchedRule) (int, error)
 }
@@ -62,9 +59,6 @@ func LookupTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
 }
 
 // ================================= OpenAIEncoder ====================================
-//
-//go:embed script/token_encoder/query.lua
-var globalTokenEncoderQueryScript string
 
 type OpenAIEncoder struct {
 	Model   string
@@ -107,39 +101,5 @@ func (e *OpenAIEncoder) CountTokens(ctx *Context, prompts []string, rule *Matche
 		builder.WriteString(prompt)
 	}
 	token := e.Encoder.Encode(builder.String(), nil, nil)
-	if len(token) > 0 {
-		estimatedToken, err := e.countTokens(ctx, rule, len(token))
-		if err != nil {
-			return 0, err
-		}
-		return estimatedToken, nil
-	}
-	return 0, nil
-}
-
-func (e *OpenAIEncoder) countTokens(ctx *Context, rule *MatchedRule, tokenization int) (int, error) {
-	if e == nil {
-		return 0, fmt.Errorf("OpenAIEncoder is nil")
-	}
-	key := fmt.Sprintf(TokenEncoderKeyFormat, rule.LimitKey, OpenAIEncoderProvider.String(), e.Model)
-
-	keys := []string{key}
-	args := []interface{}{tokenization, rule.TimeWindow * 1000}
-
-	response, err := globalRedisClient.Eval(globalTokenEncoderQueryScript, keys, args...)
-	if err != nil {
-		return 0, err
-	}
-	result := parseRedisResponse(ctx, response)
-	if result == nil || len(result) != 2 {
-		return 0, fmt.Errorf("unexpected redis response: %v", response)
-	}
-
-	logging.Info("[LLMTokenRateLimit] estimated token",
-		"limitKey", rule.LimitKey,
-		"estimatedToken", result[0],
-		"difference", result[1],
-		"requestID", ctx.Get(KeyRequestID),
-	)
-	return int(result[0]), nil
+	return len(token), nil
 }

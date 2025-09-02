@@ -13,6 +13,7 @@
 -- limitations under the License.
 -- KEYS[1]: Sliding Window Key ("{shard-<hashtag>}:sliding-window:<redisRatelimitKey>")
 -- KEYS[2]: Token Bucket Key ("{shard-<hashtag>}:token-bucket:<redisRatelimitKey>")
+-- KEYS[3]: Token Encoder Key ("{shard-<hashtag>}:token-encoder:<provider>:<model>:<redisRatelimitKey>")
 -- ARGV[1]: Estimated token consumption
 -- ARGV[2]: Current timestamp (milliseconds)
 -- ARGV[3]: Token bucket capacity
@@ -48,6 +49,7 @@ end
 
 local sliding_window_key = tostring(KEYS[1])
 local token_bucket_key = tostring(KEYS[2])
+local token_encoder_key = tostring(KEYS[3])
 
 local estimated = tonumber(ARGV[1])
 local current_timestamp = tonumber(ARGV[2])
@@ -86,7 +88,14 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
     -- Immediately replenish new tokens
     redis.call('HSET', token_bucket_key, 'capacity', current_capacity)
 end
-
+-- Update the difference from the token encoder
+local difference = actual - estimated
+local ttl = redis.call('PTTL', token_encoder_key)
+if ttl < 0 then
+    redis.call('SET', token_encoder_key, difference, 'PX', window_size + 5000)
+else
+    redis.call('INCRBY', token_encoder_key, difference)
+end
 -- Correction result for reservation
 local correct_result = 0
 if estimated < 0 or actual < 0 then
@@ -130,5 +139,6 @@ end
 -- Set expiration time to window size plus 5 seconds buffer
 redis.call('PEXPIRE', sliding_window_key, window_size + 5000)
 redis.call('PEXPIRE', token_bucket_key, window_size + 5000)
+redis.call('PEXPIRE', token_encoder_key, window_size + 5000)
 
 return {correct_result}

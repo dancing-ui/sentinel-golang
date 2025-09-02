@@ -28,7 +28,7 @@ type MatchedRule struct {
 	CountStrategy CountStrategy
 	// PETA
 	Encoding       TokenEncoding
-	EstimatedToken int
+	EstimatedToken int64
 }
 
 type MatchedRuleCollector interface {

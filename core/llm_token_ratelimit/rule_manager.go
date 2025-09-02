@@ -197,8 +197,11 @@ func logRuleUpdate(m map[string][]*Rule) {
 		logging.Info("[LLMTokenRateLimit] rules were cleared")
 	} else {
 		var builder strings.Builder
-		for _, r := range rs {
+		for i, r := range rs {
 			builder.WriteString(r.String())
+			if i != len(rs)-1 {
+				builder.WriteString(", ")
+			}
 		}
 		logging.Info("[LLMTokenRateLimit] rules were loaded",
 			"rules", builder.String(),
