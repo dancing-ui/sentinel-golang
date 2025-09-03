@@ -82,6 +82,9 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 		)
 		return false
 	}
+	defer func() {
+		ctx.Set(KeyResponseHeaders, responseHeader)
+	}()
 	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
 	if remaining < 0 {
 		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", remaining))
