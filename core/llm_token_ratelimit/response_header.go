@@ -15,7 +15,9 @@
 package llmtokenratelimit
 
 type ResponseHeader struct {
-	headers map[string]string
+	headers      map[string]string
+	ErrorCode    int32
+	ErrorMessage string
 }
 
 func NewResponseHeader() *ResponseHeader {

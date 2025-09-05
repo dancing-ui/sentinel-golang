@@ -48,6 +48,8 @@ const (
 	KeyMatchedRules    string = "SentinelLLMTokenRatelimitMatchedRules"
 	KeyResponseHeaders string = "SentinelLLMTokenRatelimitResponseHeaders"
 	KeyRequestID       string = "SentinelLLMTokenRatelimitRequestID"
+	KeyErrorCode       string = "SentinelLLMTokenRatelimitErrorCode"
+	KeyErrorMessage    string = "SentinelLLMTokenRatelimitErrorMessage"
 )
 
 // ================================= RedisRatelimitKeyFormat ==================
@@ -57,6 +59,7 @@ const (
 
 // ================================= ResponseHeader ==================
 const (
+	ResponseHeaderRequestID       string = "X-Sentinel-LLM-Token-Ratelimit-RequestID"
 	ResponseHeaderRemainingTokens string = "X-Sentinel-LLM-Token-Ratelimit-RemainingTokens"
 	ResponseHeaderWaitingTime     string = "X-Sentinel-LLM-Token-Ratelimit-WaitingTime"
 )

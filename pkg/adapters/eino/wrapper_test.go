@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package langchaingo
+package eino
 
 import (
 	"context"
@@ -23,8 +23,9 @@ import (
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/config"
 	llmtokenratelimit "github.com/alibaba/sentinel-golang/core/llm_token_ratelimit"
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/schema"
 )
 
 func initSentinel(t *testing.T) {
@@ -92,11 +93,11 @@ func initSentinel(t *testing.T) {
 	}
 }
 
-type LangChainClient struct {
-	llm llms.Model
+type EinoClient struct {
+	llm model.BaseChatModel
 }
 
-func NewLangChainClient() (*LangChainClient, error) {
+func NewEinoClient() (*EinoClient, error) {
 	apiKey := os.Getenv("LLM_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("LLM_API_KEY environment variable is not set")
@@ -112,25 +113,25 @@ func NewLangChainClient() (*LangChainClient, error) {
 		return nil, fmt.Errorf("LLM_MODEL environment variable is not set")
 	}
 
-	llm, err := openai.New(
-		openai.WithToken(apiKey),
-		openai.WithBaseURL(baseURL),
-		openai.WithModel(model),
-	)
+	llm, err := openai.NewChatModel(context.Background(), &openai.ChatModelConfig{
+		BaseURL: baseURL,
+		APIKey:  apiKey,
+		Model:   model,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create LangChain LLM client: %w", err)
 	}
 
-	return &LangChainClient{
+	return &EinoClient{
 		llm: llm,
 	}, nil
 }
 
-func TestLLMWrapper(t *testing.T) {
+func TestLLMWrapperGenerate(t *testing.T) {
 	type args struct {
 		opts      []Option
-		messages  []llms.MessageContent
-		llmOption []llms.CallOption
+		messages  []*schema.Message
+		llmOption []model.Option
 	}
 	type want struct {
 		pass bool
@@ -149,11 +150,11 @@ func TestLLMWrapper(t *testing.T) {
 							return "test-resource-allow"
 						}),
 					},
-					messages: []llms.MessageContent{
-						llms.TextParts(llms.ChatMessageTypeSystem, "You are a helpful assistant."),
-						llms.TextParts(llms.ChatMessageTypeHuman, "Hello, how are you?"),
+					messages: []*schema.Message{
+						schema.SystemMessage("You are a helpful assistant."),
+						schema.UserMessage("Hello, how are you?"),
 					},
-					llmOption: []llms.CallOption{},
+					llmOption: []model.Option{},
 				},
 				want: want{
 					pass: true,
@@ -167,11 +168,11 @@ func TestLLMWrapper(t *testing.T) {
 							return "test-resource-block"
 						}),
 					},
-					messages: []llms.MessageContent{
-						llms.TextParts(llms.ChatMessageTypeSystem, "You are a helpful assistant."),
-						llms.TextParts(llms.ChatMessageTypeHuman, "Hello, how are you?"),
+					messages: []*schema.Message{
+						schema.SystemMessage("You are a helpful assistant."),
+						schema.UserMessage("Hello, how are you?"),
 					},
-					llmOption: []llms.CallOption{},
+					llmOption: []model.Option{},
 				},
 				want: want{
 					pass: false,
@@ -183,14 +184,14 @@ func TestLLMWrapper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := NewLangChainClient()
+			client, err := NewEinoClient()
 			if err != nil {
 				t.Fatalf("failed to create LangChain client: %v", err)
 			}
 
 			llm := NewLLMWrapper(client.llm, tt.args.opts...)
 
-			response, err := llm.GenerateContent(context.Background(), tt.args.messages, tt.args.llmOption...)
+			response, err := llm.Generate(context.Background(), tt.args.messages, tt.args.llmOption...)
 			_ = response
 			if tt.want.pass {
 				if err != nil {

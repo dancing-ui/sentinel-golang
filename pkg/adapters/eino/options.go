@@ -77,6 +77,9 @@ func evaluateOptions(opts ...Option) *options {
 				for _, part := range msg.MultiContent {
 					prompts = append(prompts, part.Text)
 				}
+				if len(msg.Content) != 0 {
+					prompts = append(prompts, msg.Content)
+				}
 			}
 			return prompts
 		},

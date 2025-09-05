@@ -110,28 +110,34 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			reqInfos = options.requestInfosExtract(c)
 		}
 
-		// check
+		// Check
 		entry, err := sentinel.Entry(resource, sentinel.WithTrafficType(base.Inbound), sentinel.WithArgs(reqInfos))
-
 		if err != nil {
 			// Block
 			if options.blockFallback != nil {
 				options.blockFallback(c)
 			} else {
-				setResponseHeaders(c, err.TriggeredValue().(*llmtokenratelimit.ResponseHeader))
-				c.AbortWithStatusJSON(int(llmtokenratelimit.GetErrorCode()), gin.H{
-					"error": llmtokenratelimit.GetErrorMsg(),
+				responseHeader, ok := err.TriggeredValue().(*llmtokenratelimit.ResponseHeader)
+				if !ok || responseHeader == nil {
+					c.AbortWithStatusJSON(500, gin.H{
+						"error": "internal server error. invalid response header.",
+					})
+					return
+				}
+				setResponseHeaders(c, responseHeader)
+				c.AbortWithStatusJSON(int(responseHeader.ErrorCode), gin.H{
+					"error": responseHeader.ErrorMessage,
 				})
 			}
 			return
 		}
-		// Pass or Disabled
-		c.Next()
 		// Set response headers
 		responseHeader, ok := entry.Context().GetPair(llmtokenratelimit.KeyResponseHeaders).(*llmtokenratelimit.ResponseHeader)
 		if ok && responseHeader != nil {
 			setResponseHeaders(c, responseHeader)
 		}
+		// Pass or Disabled
+		c.Next()
 		// Update used token info
 		usedTokenInfos, exists := c.Get(llmtokenratelimit.KeyUsedTokenInfos)
 		if exists && usedTokenInfos != nil {

@@ -244,30 +244,33 @@ func (c *SafeConfig) GetConfig() *Config {
 }
 
 func (c *SafeConfig) IsEnabled() bool {
-	cfg := c.GetConfig()
-	if cfg == nil {
+	if c == nil || c.config == nil {
 		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
 		return false
 	}
-	return cfg.Enabled
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.config.Enabled
 }
 
-func GetErrorCode() int32 {
-	cfg := globalConfig.GetConfig()
-	if cfg == nil {
+func (c *SafeConfig) GetErrorCode() int32 {
+	if c == nil || c.config == nil {
 		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
-		return -1
+		return DefaultErrorCode
 	}
-	return cfg.ErrorCode
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.config.ErrorCode
 }
 
-func GetErrorMsg() string {
-	cfg := globalConfig.GetConfig()
-	if cfg == nil {
+func (c *SafeConfig) GetErrorMsg() string {
+	if c == nil || c.config == nil {
 		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
-		return ""
+		return DefaultErrorMessage
 	}
-	return cfg.ErrorMessage
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.config.ErrorMessage
 }
 
 func (p *TokenEncoderProvider) UnmarshalYAML(unmarshal func(interface{}) error) error {

@@ -85,13 +85,18 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 	defer func() {
 		ctx.Set(KeyResponseHeaders, responseHeader)
 	}()
-	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
+	// set response headers
+	responseHeader.Set(ResponseHeaderRequestID, ctx.Get(KeyRequestID).(string))
+	responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", remaining))
 	if remaining < 0 {
-		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", remaining))
+		// set waiting time in milliseconds
 		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(result[1]) * time.Millisecond).String())
+		// set error code and message
+		responseHeader.ErrorCode = globalConfig.GetErrorCode()
+		responseHeader.ErrorMessage = globalConfig.GetErrorMsg()
+		// reject the request
 		return false
 	}
-	ctx.Set(KeyResponseHeaders, responseHeader)
 	return true
 }
 
@@ -183,10 +188,16 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 	defer func() {
 		ctx.Set(KeyResponseHeaders, responseHeader)
 	}()
-	responseHeader.Set(KeyRequestID, ctx.Get(KeyRequestID).(string))
+	// set response headers
+	responseHeader.Set(ResponseHeaderRequestID, ctx.Get(KeyRequestID).(string))
+	responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", result[0]))
 	if waitingTime != PETANoWaiting {
-		responseHeader.Set(ResponseHeaderRemainingTokens, fmt.Sprintf("%d", result[0]))
+		// set waiting time in milliseconds
 		responseHeader.Set(ResponseHeaderWaitingTime, (time.Duration(waitingTime) * time.Millisecond).String())
+		// set error code and message
+		responseHeader.ErrorCode = globalConfig.GetErrorCode()
+		responseHeader.ErrorMessage = globalConfig.GetErrorMsg()
+		// reject the request
 		return false
 	}
 	c.cacheEstimatedToken(rule, result[2])
