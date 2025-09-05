@@ -37,7 +37,6 @@ jobs:
         go_version:
           - 1.18
           - 1.19
-          - 1.22.0
         os:
           - ubuntu-latest
 
@@ -63,7 +62,6 @@ jobs:
           restore-keys: ${{ runner.os }}-go-
 
       - name: Test
-        if: matrix.go_version != '1.22.0'
         run: |
           go test -v -race ./... -coverprofile=coverage.txt -covermode=atomic
           cd ./pkg/datasource/consul
@@ -86,29 +84,84 @@ jobs:
           go test -race -count=1 ./... -coverprofile=coverage.txt -covermode=atomic
           cd ../micro
           go test -race -count=1 ./... -coverprofile=coverage.txt -covermode=atomic
-      
-      - name: Setup Redis Cluster
-        if: matrix.go_version == '1.22.0'
-        uses: vishnudxb/redis-cluster@1.0.9
+
+      - name: Coverage
+        run: bash <(curl -s https://codecov.io/bash)
+
+  build-llm-token-ratelimit:
+    name: Build and test LLM Token Ratelimit - Go ${{ matrix.go_version }}
+    runs-on: ubuntu-latest
+    strategy:
+      # If you want to matrix build , you can append the following list.
+      matrix:
+        go_version:
+          - 1.22.0
+        os:
+          - ubuntu-latest
+    services:
+      redis-node1:
+        image: redis:6.2-alpine
+        options: >-
+          --entrypoint redis-server 
+          --cluster-enabled yes 
+          --cluster-config-file nodes-node1.conf 
+          --cluster-node-timeout 5000 
+          --port 6379
+        ports:
+          - 6379:6379
+      redis-node2:
+        image: redis:6.2-alpine
+        options: >-
+          --entrypoint redis-server 
+          --cluster-enabled yes 
+          --cluster-config-file nodes-node2.conf 
+          --cluster-node-timeout 5000 
+          --port 6380
+        ports:
+          - 6380:6380
+      redis-node3:
+        image: redis:6.2-alpine
+        options: >-
+          --entrypoint redis-server 
+          --cluster-enabled yes 
+          --cluster-config-file nodes-node3.conf 
+          --cluster-node-timeout 5000 
+          --port 6381
+        ports:
+          - 6381:6381
+    steps:
+
+      - name: Set up Go ${{ matrix.go_version }}
+        uses: actions/setup-go@v3
         with:
-          master1-port: 6379
-          master2-port: 6380
-          master3-port: 6381
-          slave1-port: 6382
-          slave2-port: 6383
-          slave3-port: 6384
-          sleep-duration: 5
-      
-      - name: Test Redis Cluster
-        if: matrix.go_version == '1.22.0'
+          go-version: ${{ matrix.go_version }}
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Cache build dependence
+        uses: actions/cache@v3
+        with:
+          # Cache
+          path: ~/go/pkg/mod
+          # Cache key
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Setup Redis Cluster
         run: |
-          sudo apt-get install -y redis-tools
-          docker ps -a
-          redis-cli -h 127.0.0.1 -p 6379 ping
-          redis-cli -h 127.0.0.1 -p 6379 cluster nodes
+          sleep 10
+          echo "yes" | redis-cli --cluster create \
+          127.0.0.1:6379 \
+          127.0.0.1:6380 \
+          127.0.0.1:6381 \
+          --cluster-replicas 0
+          redis-cli -h 127.0.0.1 -c -p 6379 cluster info
+          redis-cli -h 127.0.0.1 -c -p 6379 cluster nodes
           
       - name: LLM Token Ratelimit Adapter Test
-        if: matrix.go_version == '1.22.0'
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
