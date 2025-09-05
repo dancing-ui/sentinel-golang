@@ -4,14 +4,15 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package langchaingo
+
+package eino
 
 import (
 	"context"
@@ -20,22 +21,23 @@ import (
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/base"
 	llmtokenratelimit "github.com/alibaba/sentinel-golang/core/llm_token_ratelimit"
-	"github.com/tmc/langchaingo/llms"
+	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/schema"
 )
 
 type LLMWrapper struct {
-	llm     llms.Model
+	llm     model.BaseChatModel
 	options *options
 }
 
-func NewLLMWrapper(llm llms.Model, opts ...Option) *LLMWrapper {
+func NewLLMWrapper(llm model.BaseChatModel, opts ...Option) *LLMWrapper {
 	return &LLMWrapper{
 		llm:     llm,
 		options: evaluateOptions(opts...),
 	}
 }
 
-func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (w *LLMWrapper) Generate(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.Message, error) {
 	resource := w.options.defaultResource
 	if w.options.resourceExtract != nil {
 		resource = w.options.resourceExtract(ctx)
@@ -43,7 +45,7 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 
 	prompts := []string{}
 	if w.options.promptsExtract != nil {
-		prompts = w.options.promptsExtract(messages)
+		prompts = w.options.promptsExtract(input)
 	}
 
 	reqInfos := llmtokenratelimit.GenerateRequestInfos(
@@ -64,7 +66,7 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 		return nil, err
 	}
 	// Pass
-	response, llmErr := w.llm.GenerateContent(ctx, messages, options...)
+	response, llmErr := w.llm.Generate(ctx, input, opts...)
 	if llmErr != nil {
 		return nil, llmErr
 	}
@@ -74,13 +76,13 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 
 	usedTokenInfos := &llmtokenratelimit.UsedTokenInfos{}
 	if w.options.usedTokenInfosExtract != nil {
-		usedTokenInfos = w.options.usedTokenInfosExtract(response.Choices[0].GenerationInfo)
+		usedTokenInfos = w.options.usedTokenInfosExtract(response.ResponseMeta.Usage)
 	} else {
 		// fallback to OpenAI extractor
 		infos, err := llmtokenratelimit.OpenAITokenExtractor(map[string]any{
-			"prompt_tokens":     response.Choices[0].GenerationInfo["PromptTokens"],
-			"completion_tokens": response.Choices[0].GenerationInfo["CompletionTokens"],
-			"total_tokens":      response.Choices[0].GenerationInfo["TotalTokens"],
+			"prompt_tokens":     response.ResponseMeta.Usage.PromptTokens,
+			"completion_tokens": response.ResponseMeta.Usage.CompletionTokens,
+			"total_tokens":      response.ResponseMeta.Usage.TotalTokens,
 		})
 		if err != nil {
 			return nil, err
@@ -94,21 +96,9 @@ func (w *LLMWrapper) GenerateContent(ctx context.Context, messages []llms.Messag
 	return response, nil
 }
 
-func (w *LLMWrapper) validateResponse(response *llms.ContentResponse) error {
-	if response == nil || len(response.Choices) == 0 || response.Choices[0].GenerationInfo == nil {
-		return fmt.Errorf("llm response is nil or empty or missing GenerationInfo")
-	}
-	_, exists := response.Choices[0].GenerationInfo["PromptTokens"]
-	if !exists {
-		return fmt.Errorf("llm response missing PromptTokens info")
-	}
-	_, exists = response.Choices[0].GenerationInfo["CompletionTokens"]
-	if !exists {
-		return fmt.Errorf("llm response missing CompletionTokens info")
-	}
-	_, exists = response.Choices[0].GenerationInfo["TotalTokens"]
-	if !exists {
-		return fmt.Errorf("llm response missing TotalTokens info")
+func (w *LLMWrapper) validateResponse(response *schema.Message) error {
+	if response == nil || response.ResponseMeta == nil || response.ResponseMeta.Usage == nil {
+		return fmt.Errorf("llm response is nil or empty or missing Usage infos")
 	}
 	return nil
 }

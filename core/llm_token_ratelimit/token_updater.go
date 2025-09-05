@@ -112,7 +112,7 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		return
 	}
 	actualToken := calculator.Calculate(ctx, infos)
-	logging.Info("[LLMTokenRateLimit] actual infos",
+	logging.Info("[LLMTokenRateLimit] correct infos",
 		"limitKey", rule.LimitKey,
 		"estimated_token", rule.EstimatedToken,
 		"actual_token", actualToken,

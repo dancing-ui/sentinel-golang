@@ -28,17 +28,17 @@ func OpenAITokenExtractor(response interface{}) (*UsedTokenInfos, error) {
 		return nil, fmt.Errorf("response is not map[string]any")
 	}
 
-	inputTokens, ok := resp["PromptTokens"].(int)
+	inputTokens, ok := resp["prompt_tokens"].(int)
 	if !ok {
-		return nil, fmt.Errorf("PromptTokens not found or not int")
+		return nil, fmt.Errorf("prompt_tokens not found or not int")
 	}
-	outputTokens, ok := resp["CompletionTokens"].(int)
+	outputTokens, ok := resp["completion_tokens"].(int)
 	if !ok {
-		return nil, fmt.Errorf("CompletionTokens not found or not int")
+		return nil, fmt.Errorf("completion_tokens not found or not int")
 	}
-	totalTokens, ok := resp["TotalTokens"].(int)
+	totalTokens, ok := resp["total_tokens"].(int)
 	if !ok {
-		return nil, fmt.Errorf("TotalTokens not found or not int")
+		return nil, fmt.Errorf("total_tokens not found or not int")
 	}
 
 	return GenerateUsedTokenInfos(

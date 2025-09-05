@@ -15,7 +15,7 @@
 package server
 
 import (
-	langchaingo "llm_token_ratelimit/langchain-go"
+	"llm_token_ratelimit/llm_client"
 	"net/http"
 	"time"
 
@@ -24,7 +24,7 @@ import (
 )
 
 func (s *Server) chatCompletion(c *gin.Context) {
-	infos, err := bindJSONFromCache[langchaingo.LLMRequestInfos](c)
+	infos, err := bindJSONFromCache[llm_client.LLMRequestInfos](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": gin.H{
@@ -35,7 +35,7 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		})
 		return
 	}
-	client, err := langchaingo.NewLLMClient(infos.Model)
+	client, err := llm_client.NewLLMClient(infos)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
@@ -46,7 +46,7 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		})
 		return
 	}
-	response, err := client.Request(infos)
+	response, err := client.GenerateContent(infos)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
@@ -68,17 +68,7 @@ func (s *Server) chatCompletion(c *gin.Context) {
 		return
 	}
 
-	if len(response.Choices) == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"message": "no choices returned from LLM",
-				"type":    "choices_error",
-			},
-		})
-		return
-	}
-
-	usedTokenInfos, err := llmtokenratelimit.OpenAITokenExtractor(response.Choices[0].GenerationInfo)
+	usedTokenInfos, err := llmtokenratelimit.OpenAITokenExtractor(response.Usage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
@@ -94,7 +84,7 @@ func (s *Server) chatCompletion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "success",
 		"timestamp": time.Now().Unix(),
-		"choices":   response.Choices[0].Content,
+		"choices":   response.Content,
 		"usage": gin.H{
 			"input_tokens":  usedTokenInfos.InputTokens,
 			"output_tokens": usedTokenInfos.OutputTokens,

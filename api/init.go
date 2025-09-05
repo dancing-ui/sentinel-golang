@@ -135,10 +135,8 @@ func initCoreComponents() error {
 		return nil
 	}
 
-	if config.LLMTokenRateLimit() != nil {
-		if err := llmtokenratelimit.Init(config.LLMTokenRateLimit()); err != nil {
-			return err
-		}
+	if err := llmtokenratelimit.Init(config.LLMTokenRateLimit()); err != nil {
+		return err
 	}
 
 	return nil

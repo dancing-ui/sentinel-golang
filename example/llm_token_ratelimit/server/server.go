@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	langchaingo "llm_token_ratelimit/langchain-go"
+	"llm_token_ratelimit/llm_client"
 	"llm_token_ratelimit/ratelimit"
 	"net/http"
 
@@ -111,7 +111,7 @@ func NewServer(ip string, port uint16) *Server {
 	engine.Use(cacheBodyMiddleware())
 	engine.Use(ratelimit.SentinelMiddleware(
 		ratelimit.WithPromptsExtractor(func(c *gin.Context) []string {
-			infos, err := bindJSONFromCache[langchaingo.LLMRequestInfos](c)
+			infos, err := bindJSONFromCache[llm_client.LLMRequestInfos](c)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": gin.H{

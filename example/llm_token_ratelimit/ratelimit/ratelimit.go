@@ -125,19 +125,18 @@ func SentinelMiddleware(opts ...Option) gin.HandlerFunc {
 			}
 			return
 		}
-		// Pass
-		setResponseHeaders(c, entry.Context().GetPair(llmtokenratelimit.KeyResponseHeaders).(*llmtokenratelimit.ResponseHeader))
-
-		// Wait for the response to be written
+		// Pass or Disabled
 		c.Next()
-
-		// update used token info
-		usedTokenInfos, exists := c.Get(llmtokenratelimit.KeyUsedTokenInfos)
-		if !exists || usedTokenInfos == nil {
-			return
+		// Set response headers
+		responseHeader, ok := entry.Context().GetPair(llmtokenratelimit.KeyResponseHeaders).(*llmtokenratelimit.ResponseHeader)
+		if ok && responseHeader != nil {
+			setResponseHeaders(c, responseHeader)
 		}
-		entry.SetPair(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
-
+		// Update used token info
+		usedTokenInfos, exists := c.Get(llmtokenratelimit.KeyUsedTokenInfos)
+		if exists && usedTokenInfos != nil {
+			entry.SetPair(llmtokenratelimit.KeyUsedTokenInfos, usedTokenInfos)
+		}
 		entry.Exit() // Must be executed immediately after the SetPair function
 	}
 }

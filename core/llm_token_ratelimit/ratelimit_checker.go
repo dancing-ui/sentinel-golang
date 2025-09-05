@@ -80,7 +80,7 @@ func (c *FixedWindowChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool
 			"failed to create response header in llm_token_ratelimit.FixedWindowChecker.checkLimitKey()",
 			"requestID", ctx.Get(KeyRequestID),
 		)
-		return false
+		return true
 	}
 	defer func() {
 		ctx.Set(KeyResponseHeaders, responseHeader)
@@ -160,7 +160,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return true
 	}
-	logging.Info("[LLMTokenRateLimit] estimated infos",
+	logging.Info("[LLMTokenRateLimit] withhold infos",
 		"limitKey", rule.LimitKey,
 		"current_capacity", result[0],
 		"waiting_time(ms)", result[1],
@@ -178,7 +178,7 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 			"failed to create response header in llm_token_ratelimit.PETAChecker.checkLimitKey()",
 			"requestID", ctx.Get(KeyRequestID),
 		)
-		return false
+		return true
 	}
 	defer func() {
 		ctx.Set(KeyResponseHeaders, responseHeader)

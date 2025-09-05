@@ -54,28 +54,24 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 		return fmt.Errorf("safe redis client is nil")
 	}
 	if cfg == nil {
-		return fmt.Errorf("config is nil")
+		cfg = NewDefaultRedisConfig()
+		if cfg == nil {
+			return fmt.Errorf("redis config is nil")
+		}
 	}
+
+	cfg.setDefaultConfigOptions()
 
 	addrsMap := make(map[string]struct{}, len(cfg.Addrs))
 	for _, addr := range cfg.Addrs {
 		if addr == nil {
 			continue
 		}
-		if len(addr.Name) == 0 {
-			addr.Name = DefaultRedisAddrName
-		}
-		if addr.Port == 0 {
-			addr.Port = DefaultRedisAddrPort
-		}
 		addrsMap[fmt.Sprintf("%s:%d", addr.Name, addr.Port)] = struct{}{}
 	}
 	addrs := make([]string, 0, len(addrsMap))
 	for addr := range addrsMap {
 		addrs = append(addrs, addr)
-	}
-	if len(addrs) == 0 {
-		addrs = append(addrs, fmt.Sprintf("%s:%d", DefaultRedisAddrName, DefaultRedisAddrPort))
 	}
 
 	dialTimeout := time.Duration(cfg.DialTimeout) * time.Millisecond
@@ -85,28 +81,6 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 	poolSize := cfg.PoolSize
 	minIdleConns := cfg.MinIdleConns
 	maxRetries := cfg.MaxRetries
-
-	if dialTimeout == 0 {
-		dialTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
-	}
-	if readTimeout == 0 {
-		readTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
-	}
-	if writeTimeout == 0 {
-		writeTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
-	}
-	if poolTimeout == 0 {
-		poolTimeout = time.Duration(DefaultRedisTimeout) * time.Millisecond
-	}
-	if poolSize == 0 {
-		poolSize = DefaultRedisPoolSize
-	}
-	if minIdleConns == 0 {
-		minIdleConns = DefaultRedisMinIdleConns
-	}
-	if maxRetries == 0 {
-		maxRetries = DefaultRedisMaxRetries
-	}
 
 	newClient := redis.NewClusterClient(
 		&redis.ClusterOptions{

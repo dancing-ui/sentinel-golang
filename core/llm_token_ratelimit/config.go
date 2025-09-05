@@ -112,10 +112,100 @@ type Redis struct {
 }
 
 type Config struct {
+	Enabled      bool    `json:"enabled" yaml:"enabled"`
 	Rules        []*Rule `json:"rules" yaml:"rules"`
 	Redis        *Redis  `json:"redis" yaml:"redis"`
 	ErrorCode    int32   `json:"errorCode" yaml:"errorCode"`
 	ErrorMessage string  `json:"errorMessage" yaml:"errorMessage"`
+}
+
+func NewDefaultRedisConfig() *Redis {
+	return &Redis{
+		Addrs: []*RedisAddr{
+			{
+				Name: DefaultRedisAddrName,
+				Port: DefaultRedisAddrPort,
+			},
+		},
+		DialTimeout:  DefaultRedisTimeout,
+		ReadTimeout:  DefaultRedisTimeout,
+		WriteTimeout: DefaultRedisTimeout,
+		PoolTimeout:  DefaultRedisTimeout,
+		PoolSize:     DefaultRedisPoolSize,
+		MinIdleConns: DefaultRedisMinIdleConns,
+		MaxRetries:   DefaultRedisMaxRetries,
+	}
+}
+
+func NewDefaultConfig() *Config {
+	return &Config{
+		Enabled:      false,
+		Rules:        nil,
+		Redis:        nil,
+		ErrorCode:    DefaultErrorCode,
+		ErrorMessage: DefaultErrorMessage,
+	}
+}
+
+func (c *Redis) setDefaultConfigOptions() {
+	if c == nil {
+		return
+	}
+	if len(c.Addrs) == 0 {
+		c.Addrs = []*RedisAddr{
+			{
+				Name: DefaultRedisAddrName,
+				Port: DefaultRedisAddrPort,
+			},
+		}
+	}
+	for i := range c.Addrs {
+		if c.Addrs[i] == nil {
+			continue
+		}
+		if strings.TrimSpace(c.Addrs[i].Name) == "" {
+			c.Addrs[i].Name = DefaultRedisAddrName
+		}
+		if c.Addrs[i].Port == 0 {
+			c.Addrs[i].Port = DefaultRedisAddrPort
+		}
+	}
+	if c.DialTimeout == 0 {
+		c.DialTimeout = DefaultRedisTimeout
+	}
+	if c.ReadTimeout == 0 {
+		c.ReadTimeout = DefaultRedisTimeout
+	}
+	if c.WriteTimeout == 0 {
+		c.WriteTimeout = DefaultRedisTimeout
+	}
+	if c.PoolTimeout == 0 {
+		c.PoolTimeout = DefaultRedisTimeout
+	}
+	if c.PoolSize == 0 {
+		c.PoolSize = DefaultRedisPoolSize
+	}
+	if c.MinIdleConns == 0 {
+		c.MinIdleConns = DefaultRedisMinIdleConns
+	}
+	if c.MaxRetries == 0 {
+		c.MaxRetries = DefaultRedisMaxRetries
+	}
+}
+
+func (c *Config) setDefaultConfigOptions() {
+	if c == nil {
+		return
+	}
+	if c.ErrorCode == 0 {
+		c.ErrorCode = DefaultErrorCode
+	}
+	if strings.TrimSpace(c.ErrorMessage) == "" {
+		c.ErrorMessage = DefaultErrorMessage
+	}
+	if c.Redis == nil {
+		c.Redis = NewDefaultRedisConfig()
+	}
 }
 
 type SafeConfig struct {
@@ -151,6 +241,15 @@ func (c *SafeConfig) GetConfig() *Config {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.config
+}
+
+func (c *SafeConfig) IsEnabled() bool {
+	cfg := c.GetConfig()
+	if cfg == nil {
+		logging.Error(errors.New("safe config is nil"), "found safe config is nil")
+		return false
+	}
+	return cfg.Enabled
 }
 
 func GetErrorCode() int32 {

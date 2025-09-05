@@ -16,6 +16,8 @@ package llmtokenratelimit
 
 import (
 	"fmt"
+
+	"github.com/alibaba/sentinel-golang/logging"
 )
 
 func Init(cfg *Config) error {
@@ -31,6 +33,20 @@ func Init(cfg *Config) error {
 	if globalTokenCalculator == nil {
 		return fmt.Errorf("global token calculator is nil")
 	}
+
+	if cfg == nil {
+		cfg = NewDefaultConfig()
+		if cfg == nil {
+			return fmt.Errorf("new default config failed")
+		}
+	}
+
+	if !cfg.Enabled {
+		logging.Warn("[LLMTokenRateLimit] llm token rate limit is disabled, please enable it in config if needed")
+		return nil
+	}
+
+	cfg.setDefaultConfigOptions()
 
 	if err := globalConfig.SetConfig(cfg); err != nil {
 		return err

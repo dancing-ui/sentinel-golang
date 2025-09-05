@@ -53,6 +53,9 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 }
 
 func (s *Slot) checkPass(ctx *base.EntryContext) (bool, *Rule, interface{}) {
+	if !globalConfig.IsEnabled() {
+		return true, nil, nil
+	}
 	requestID := generateUUID()
 	llmTokenRatelimitCtx, ok := ctx.GetPair(KeyContext).(*Context)
 	if !ok || llmTokenRatelimitCtx == nil {

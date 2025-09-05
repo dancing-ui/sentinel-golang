@@ -42,6 +42,9 @@ func (c *LLMTokenRatelimitStatSlot) OnEntryBlocked(_ *base.EntryContext, _ *base
 }
 
 func (c *LLMTokenRatelimitStatSlot) OnCompleted(ctx *base.EntryContext) {
+	if !globalConfig.IsEnabled() {
+		return
+	}
 	usedTokenInfos, ok := ctx.GetPair(KeyUsedTokenInfos).(*UsedTokenInfos)
 	if !ok || usedTokenInfos == nil {
 		return
