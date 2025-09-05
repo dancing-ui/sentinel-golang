@@ -113,7 +113,7 @@ jobs:
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
         run: |
-          cd ./pkg/ratelimit/langchaingo
+          cd ./pkg/adapters/langchaingo
           go test -race -count=1 ./... -coverprofile=coverage.txt -covermode=atomic
 
       - name: Coverage
