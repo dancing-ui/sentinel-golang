@@ -40,9 +40,23 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 
 	reqInfos := extractRequestInfos(ctx) // allow nil for global rate limit
 
-	ruleMap := make(map[string]*MatchedRule)
+	resourceHash := generateHash(rule.Resource)
+	ruleStrategy := rule.Strategy.String()
+
+	estimatedSize := 0
+	for _, item := range rule.SpecificItems {
+		if item.KeyItems != nil {
+			estimatedSize += len(item.KeyItems)
+		}
+	}
+
+	ruleMap := make(map[string]*MatchedRule, estimatedSize)
 
 	for _, specificItem := range rule.SpecificItems {
+		if specificItem.KeyItems == nil {
+			continue
+		}
+
 		identifierChecker := globalRuleMatcher.getIdentifierChecker(specificItem.Identifier.Type)
 		if identifierChecker == nil {
 			logging.Error(errors.New("unknown identifier.type"),
@@ -52,9 +66,9 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 			)
 			continue
 		}
-		if specificItem.KeyItems == nil {
-			continue
-		}
+
+		identifierType := specificItem.Identifier.Type.String()
+
 		for _, keyItem := range specificItem.KeyItems {
 			if !identifierChecker.Check(ctx, reqInfos, specificItem.Identifier, keyItem.Key) {
 				continue
@@ -69,17 +83,22 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 				continue
 			}
 
-			params := &BaseLimitKeyParams{
-				Resource:       generateHash(rule.Resource),
-				Strategy:       rule.Strategy,
-				IdentifierType: specificItem.Identifier.Type,
-				TimeWindow:     timeWindow,
-				TokenSize:      keyItem.Token.Number,
-				CountStrategy:  keyItem.Token.CountStrategy,
+			limitKey := fmt.Sprintf(RedisRatelimitKeyFormat,
+				resourceHash,
+				ruleStrategy,
+				identifierType,
+				timeWindow,
+				keyItem.Token.CountStrategy.String(),
+			)
+			ruleMap[limitKey] = &MatchedRule{
+				Strategy:      rule.Strategy,
+				LimitKey:      limitKey,
+				TimeWindow:    timeWindow,
+				TokenSize:     keyItem.Token.Number,
+				CountStrategy: keyItem.Token.CountStrategy,
 				// PETA
 				Encoding: rule.Encoding,
 			}
-			c.addMatchedRule(ctx, params, ruleMap)
 		}
 	}
 
@@ -88,60 +107,4 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 		rules = append(rules, rule)
 	}
 	return rules
-}
-
-func (c *BaseRuleCollector) addMatchedRule(ctx *Context, params *BaseLimitKeyParams, ruleMap map[string]*MatchedRule) {
-	if c == nil {
-		return
-	}
-	if params.CountStrategy != TotalTokens {
-		limitKey, err := c.generateLimitKey(params)
-		if err != nil {
-			logging.Error(err, "failed to generate LimitKey in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
-				"params", params,
-				"requestID", ctx.Get(KeyRequestID),
-			)
-			return
-		}
-		ruleMap[limitKey] = &MatchedRule{
-			Strategy:      params.Strategy,
-			LimitKey:      limitKey,
-			TimeWindow:    params.TimeWindow,
-			TokenSize:     params.TokenSize,
-			CountStrategy: params.CountStrategy,
-			// PETA
-			Encoding: params.Encoding,
-		}
-	}
-	params.CountStrategy = TotalTokens
-	limitKey, err := c.generateLimitKey(params)
-	if err != nil {
-		logging.Error(err, "failed to generate LimitKey in llm_token_ratelimit.BaseRuleCollector.addMatchedRule()",
-			"params", params,
-			"requestID", ctx.Get(KeyRequestID),
-		)
-		return
-	}
-	ruleMap[limitKey] = &MatchedRule{
-		Strategy:      params.Strategy,
-		LimitKey:      limitKey,
-		TimeWindow:    params.TimeWindow,
-		TokenSize:     params.TokenSize,
-		CountStrategy: params.CountStrategy,
-		// PETA
-		Encoding: params.Encoding,
-	}
-}
-
-func (c *BaseRuleCollector) generateLimitKey(params *BaseLimitKeyParams) (string, error) {
-	if c == nil {
-		return "", fmt.Errorf("BaseRuleCollector is nil")
-	}
-	return fmt.Sprintf(RedisRatelimitKeyFormat,
-		params.Resource,
-		params.Strategy.String(),
-		params.IdentifierType.String(),
-		params.TimeWindow,
-		params.CountStrategy.String(),
-	), nil
 }

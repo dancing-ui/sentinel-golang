@@ -112,12 +112,6 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		return
 	}
 	actualToken := calculator.Calculate(ctx, infos)
-	logging.Info("[LLMTokenRateLimit] correct infos",
-		"limitKey", rule.LimitKey,
-		"estimated_token", rule.EstimatedToken,
-		"actual_token", actualToken,
-		"requestID", ctx.Get(KeyRequestID),
-	)
 
 	slidingWindowKey := fmt.Sprintf(PETASlidingWindowKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
 	tokenBucketKey := fmt.Sprintf(PETATokenBucketKeyFormat, generateHash(rule.LimitKey), rule.LimitKey)
@@ -145,10 +139,16 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 	correctResult := result[0]
 	if correctResult != PETACorrectOK && correctResult != PETACorrectOverestimateError { // Temporarily unable to handle overestimation cases
 		logging.Warn("[LLMTokenRateLimit] failed to update the limit key",
-			"limitKey", rule.LimitKey,
-			"correctResult", correctResult,
+			"correct_result", correctResult,
 			"requestID", ctx.Get(KeyRequestID),
 		)
 		return
 	}
+
+	logging.Info("[LLMTokenRateLimit] correct completed",
+		"estimated_token", rule.EstimatedToken,
+		"actual_token", actualToken,
+		"correct_result", correctResult,
+		"requestID", ctx.Get(KeyRequestID),
+	)
 }

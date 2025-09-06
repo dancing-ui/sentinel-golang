@@ -129,6 +129,11 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		return true
 	}
 
+	logging.Info("[LLMTokenRateLimit] check with PETA strategy",
+		"limitKey", rule.LimitKey,
+		"requestID", ctx.Get(KeyRequestID),
+	)
+
 	prompts := []string{}
 	reqInfos := extractRequestInfos(ctx)
 	if reqInfos != nil {
@@ -165,11 +170,9 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return true
 	}
-	logging.Info("[LLMTokenRateLimit] withhold infos",
-		"limitKey", rule.LimitKey,
+	logging.Info("[LLMTokenRateLimit] withhold completed",
 		"current_capacity", result[0],
 		"waiting_time(ms)", result[1],
-		"estimated_token", result[2],
 		"difference", result[3],
 		"tokenization_length", length,
 		"requestID", ctx.Get(KeyRequestID),
