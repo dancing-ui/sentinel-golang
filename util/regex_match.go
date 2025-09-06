@@ -17,6 +17,9 @@ const (
 )
 
 func RegexMatch(pattern, text string) bool {
+	if pattern == "" && text == "" {
+		return true
+	}
 	if pattern == "" || text == "" {
 		return false
 	}

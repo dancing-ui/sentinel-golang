@@ -24,6 +24,9 @@ func (f *AllIdentifierChecker) Check(ctx *Context, infos *RequestInfos, identifi
 	if f == nil {
 		return false
 	}
+	if globalRuleMatcher == nil {
+		return true // system not ready, allow all
+	}
 	if infos == nil {
 		return true // allow nil for global rate limit
 	}
@@ -44,10 +47,7 @@ func (f *HeaderChecker) Check(ctx *Context, infos *RequestInfos, identifier Iden
 	if f == nil {
 		return false
 	}
-	if infos == nil {
-		return true // allow nil for global rate limit
-	}
-	if infos.Headers == nil {
+	if infos == nil || infos.Headers == nil {
 		return true // allow nil for global rate limit
 	}
 	for key, values := range infos.Headers {

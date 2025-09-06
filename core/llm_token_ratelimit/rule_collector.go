@@ -21,16 +21,6 @@ import (
 	"github.com/alibaba/sentinel-golang/logging"
 )
 
-type BaseLimitKeyParams struct {
-	Resource       string
-	Strategy       Strategy
-	IdentifierType IdentifierType
-	TimeWindow     int64
-	TokenSize      int64
-	CountStrategy  CountStrategy
-	// PETA
-	Encoding TokenEncoding
-}
 type BaseRuleCollector struct{}
 
 func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {

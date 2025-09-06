@@ -28,7 +28,7 @@ func TestRegexMatch(t *testing.T) {
 	}{
 		{"empty pattern", "", "test", false},
 		{"empty text", "test", "", false},
-		{"both empty", "", "", false},
+		{"both empty", "", "", true},
 		{"asterisk pattern empty text", ".*", "", false},
 
 		{"asterisk pattern", ".*", "anything", true},
