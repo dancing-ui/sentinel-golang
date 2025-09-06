@@ -59,7 +59,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"test123"},
+					"User-Id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -75,7 +75,7 @@ func TestAllIdentifierChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"different"},
+					"User-Id": {"different"},
 				},
 			},
 			identifier: Identifier{
@@ -165,7 +165,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"test123"},
+					"User-Id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -181,7 +181,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"different"},
+					"User-Id": {"different"},
 				},
 			},
 			identifier: Identifier{
@@ -197,7 +197,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{},
+					"User-Id": {},
 				},
 			},
 			identifier: Identifier{
@@ -213,7 +213,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"test123", "different"},
+					"User-Id": {"test123", "different"},
 				},
 			},
 			identifier: Identifier{
@@ -229,7 +229,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"different", "test123"},
+					"User-Id": {"different", "test123"},
 				},
 			},
 			identifier: Identifier{
@@ -245,7 +245,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"different1", "different2"},
+					"User-Id": {"different1", "different2"},
 				},
 			},
 			identifier: Identifier{
@@ -261,7 +261,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"X-User-Id": []string{"test123"},
+					"X-User-Id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -277,7 +277,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"App-Id": []string{"test123"},
+					"App-Id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -293,7 +293,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"test123"},
+					"User-Id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -309,7 +309,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"user-id": []string{"test123"},
+					"user-id": {"test123"},
 				},
 			},
 			identifier: Identifier{
@@ -325,7 +325,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"anything"},
+					"User-Id": {"anything"},
 				},
 			},
 			identifier: Identifier{
@@ -341,8 +341,8 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"user123"},
-					"App-Id":  []string{"app456"},
+					"User-Id": {"user123"},
+					"App-Id":  {"app456"},
 				},
 			},
 			identifier: Identifier{
@@ -358,7 +358,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{"12345"},
+					"User-Id": {"12345"},
 				},
 			},
 			identifier: Identifier{
@@ -374,7 +374,7 @@ func TestHeaderChecker_Check(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Id": []string{""},
+					"User-Id": {""},
 				},
 			},
 			identifier: Identifier{
@@ -413,7 +413,7 @@ func TestHeaderChecker_Check_EdgeCases(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"X-Custom-Header_123": []string{"value"},
+					"X-Custom-Header_123": {"value"},
 				},
 			},
 			identifier: Identifier{
@@ -429,7 +429,7 @@ func TestHeaderChecker_Check_EdgeCases(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"Content-Type": []string{"application/json; charset=utf-8"},
+					"Content-Type": {"application/json; charset=utf-8"},
 				},
 			},
 			identifier: Identifier{
@@ -445,7 +445,7 @@ func TestHeaderChecker_Check_EdgeCases(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"User-Name": []string{"用户123"},
+					"User-Name": {"用户123"},
 				},
 			},
 			identifier: Identifier{
@@ -461,7 +461,7 @@ func TestHeaderChecker_Check_EdgeCases(t *testing.T) {
 			ctx:     NewContext(),
 			infos: &RequestInfos{
 				Headers: map[string][]string{
-					"Long-Header": []string{generateLongString(1000)},
+					"Long-Header": {generateLongString(1000)},
 				},
 			},
 			identifier: Identifier{
@@ -495,7 +495,7 @@ func TestAllIdentifierChecker_Check_Concurrency(t *testing.T) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"test123"},
+			"User-Id": {"test123"},
 		},
 	}
 	identifier := Identifier{
@@ -530,7 +530,7 @@ func TestHeaderChecker_Check_Concurrency(t *testing.T) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"test123"},
+			"User-Id": {"test123"},
 		},
 	}
 	identifier := Identifier{
@@ -572,10 +572,10 @@ func BenchmarkAllIdentifierChecker_Check(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id":   []string{"user123"},
-			"App-Id":    []string{"app456"},
-			"X-Request": []string{"req789"},
-			"X-Version": []string{"v1.0"},
+			"User-Id":   {"user123"},
+			"App-Id":    {"app456"},
+			"X-Request": {"req789"},
+			"X-Version": {"v1.0"},
 		},
 	}
 	identifier := Identifier{
@@ -595,10 +595,10 @@ func BenchmarkHeaderChecker_Check(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id":   []string{"user123"},
-			"App-Id":    []string{"app456"},
-			"X-Request": []string{"req789"},
-			"X-Version": []string{"v1.0"},
+			"User-Id":   {"user123"},
+			"App-Id":    {"app456"},
+			"X-Request": {"req789"},
+			"X-Version": {"v1.0"},
 		},
 	}
 	identifier := Identifier{
@@ -618,7 +618,7 @@ func BenchmarkHeaderChecker_Check_MultipleValues(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"admin", "user", "guest", "operator", "user123"},
+			"User-Id": {"admin", "user", "guest", "operator", "user123"},
 		},
 	}
 	identifier := Identifier{
@@ -638,9 +638,9 @@ func BenchmarkHeaderChecker_Check_WildcardPattern(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"X-User-Id":    []string{"user123"},
-			"X-App-Id":     []string{"app456"},
-			"X-Request-Id": []string{"req789"},
+			"X-User-Id":    {"user123"},
+			"X-App-Id":     {"app456"},
+			"X-Request-Id": {"req789"},
 		},
 	}
 	identifier := Identifier{
@@ -683,7 +683,7 @@ func BenchmarkHeaderChecker_Check_ComplexPattern(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user-123-admin-456"},
+			"User-Id": {"user-123-admin-456"},
 		},
 	}
 	identifier := Identifier{
@@ -709,7 +709,7 @@ func BenchmarkAllIdentifierChecker_Check_Parallel(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	}
 	identifier := Identifier{
@@ -731,7 +731,7 @@ func BenchmarkHeaderChecker_Check_Parallel(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	}
 	identifier := Identifier{
@@ -754,7 +754,7 @@ func BenchmarkHeaderChecker_Check_Memory(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	}
 	identifier := Identifier{
@@ -781,7 +781,7 @@ func BenchmarkAllIdentifierChecker_Check_Memory(b *testing.B) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	}
 	identifier := Identifier{
@@ -819,7 +819,7 @@ func TestAllIdentifierChecker_Check_NilGlobalMatcher(t *testing.T) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"test123"},
+			"User-Id": {"test123"},
 		},
 	}
 	identifier := Identifier{
@@ -850,7 +850,7 @@ func TestAllIdentifierChecker_Check_EmptyCheckers(t *testing.T) {
 	ctx := NewContext()
 	infos := &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"test123"},
+			"User-Id": {"test123"},
 		},
 	}
 	identifier := Identifier{

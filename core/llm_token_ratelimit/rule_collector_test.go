@@ -56,7 +56,7 @@ func TestBaseRuleCollector_Collect(t *testing.T) {
 				ctx := NewContext()
 				ctx.Set(KeyRequestInfos, &RequestInfos{
 					Headers: map[string][]string{
-						"User-Id": []string{"user123"},
+						"User-Id": {"user123"},
 					},
 				})
 				return ctx
@@ -98,8 +98,8 @@ func TestBaseRuleCollector_Collect(t *testing.T) {
 				ctx := NewContext()
 				ctx.Set(KeyRequestInfos, &RequestInfos{
 					Headers: map[string][]string{
-						"User-Id": []string{"user123"},
-						"App-Id":  []string{"app456"},
+						"User-Id": {"user123"},
+						"App-Id":  {"app456"},
 					},
 				})
 				return ctx
@@ -152,7 +152,7 @@ func TestBaseRuleCollector_Collect(t *testing.T) {
 				ctx := NewContext()
 				ctx.Set(KeyRequestInfos, &RequestInfos{
 					Headers: map[string][]string{
-						"User-Id": []string{"user123"},
+						"User-Id": {"user123"},
 					},
 				})
 				return ctx
@@ -205,7 +205,7 @@ func TestBaseRuleCollector_Collect(t *testing.T) {
 				ctx := NewContext()
 				ctx.Set(KeyRequestInfos, &RequestInfos{
 					Headers: map[string][]string{
-						"User-Id": []string{"user123"},
+						"User-Id": {"user123"},
 					},
 				})
 				return ctx
@@ -243,7 +243,7 @@ func TestBaseRuleCollector_Collect(t *testing.T) {
 				ctx := NewContext()
 				ctx.Set(KeyRequestInfos, &RequestInfos{
 					Headers: map[string][]string{
-						"User-Id": []string{"user123"},
+						"User-Id": {"user123"},
 					},
 				})
 				return ctx
@@ -322,7 +322,7 @@ func TestBaseRuleCollector_Collect_Concurrency(t *testing.T) {
 	ctx := NewContext()
 	ctx.Set(KeyRequestInfos, &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	})
 
@@ -446,10 +446,10 @@ func BenchmarkBaseRuleCollector_Collect(b *testing.B) {
 	ctx := NewContext()
 	ctx.Set(KeyRequestInfos, &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id":  []string{"user123"},
-			"App-Id":   []string{"app456"},
-			"Version":  []string{"v1.0"},
-			"Platform": []string{"web"},
+			"User-Id":  {"user123"},
+			"App-Id":   {"app456"},
+			"Version":  {"v1.0"},
+			"Platform": {"web"},
 		},
 	})
 
@@ -559,7 +559,7 @@ func BenchmarkBaseRuleCollector_Collect_Memory(b *testing.B) {
 	ctx := NewContext()
 	ctx.Set(KeyRequestInfos, &RequestInfos{
 		Headers: map[string][]string{
-			"User-Id": []string{"user123"},
+			"User-Id": {"user123"},
 		},
 	})
 
