@@ -85,7 +85,7 @@ const (
 	RandomLetterIdxMax  = 63 / RandomLetterIdxBits
 )
 
-// ================================= OpenAIEncoder ============================
+// ================================= TokenEncoder =============================
 const (
 	TokenEncoderKeyFormat string = "{shard-%s}:token-encoder:%s:%s:%s" // hashTag, provider, model, redisRatelimitKey
 )

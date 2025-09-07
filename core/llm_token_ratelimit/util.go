@@ -15,7 +15,6 @@
 package llmtokenratelimit
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/google/uuid"
+	"github.com/jinzhu/copier"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -108,10 +108,14 @@ func generateUUID() string {
 	return uuid.NewString()
 }
 
-func deepCopyByJSON(src, dest interface{}) error {
-	bytes, err := json.Marshal(src)
-	if err != nil {
-		return err
+func deepCopyByCopier(src, dest interface{}) error {
+	if src == nil {
+		return errors.New("src is nil")
 	}
-	return json.Unmarshal(bytes, dest)
+	if dest == nil {
+		return errors.New("dest is nil")
+	}
+	return copier.CopyWithOption(dest, src, copier.Option{
+		DeepCopy: true,
+	})
 }

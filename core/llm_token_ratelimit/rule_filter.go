@@ -22,7 +22,7 @@ func FilterRules(rules []*Rule) []*Rule {
 		return []*Rule{}
 	}
 	var copiedRules = make([]*Rule, len(rules))
-	if err := deepCopyByJSON(rules, &copiedRules); err != nil {
+	if err := deepCopyByCopier(&rules, &copiedRules); err != nil {
 		logging.Warn("[LLMTokenRateLimit] failed to deep copy rules, returning empty slice",
 			"error", err.Error(),
 		)

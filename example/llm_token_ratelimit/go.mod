@@ -5,7 +5,7 @@ go 1.22.0
 replace github.com/alibaba/sentinel-golang => ../../
 
 require (
-	github.com/alibaba/sentinel-golang v0.0.0-00010101000000-000000000000
+	github.com/alibaba/sentinel-golang v1.0.4
 	github.com/cloudwego/eino v0.4.7
 	github.com/cloudwego/eino-ext/components/model/openai v0.0.0-20250904121005-ad78ed3e5e49
 	github.com/gin-gonic/gin v1.10.1
@@ -41,6 +41,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/invopop/yaml v0.1.0 // indirect
+	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
