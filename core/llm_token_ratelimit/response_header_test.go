@@ -33,19 +33,19 @@ func TestNewResponseHeader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rh := NewResponseHeader()
 			if rh == nil {
-				t.Error("NewResponseHeader() should not return nil")
+				t.Fatal("NewResponseHeader() should not return nil")
 			}
 			if rh.headers == nil {
-				t.Error("headers should be initialized")
+				t.Fatal("headers should be initialized")
 			}
 			if len(rh.headers) != 0 {
-				t.Error("headers should be empty initially")
+				t.Fatal("headers should be empty initially")
 			}
 			if rh.ErrorCode != 0 {
-				t.Error("ErrorCode should be 0 initially")
+				t.Fatal("ErrorCode should be 0 initially")
 			}
 			if rh.ErrorMessage != "" {
-				t.Error("ErrorMessage should be empty initially")
+				t.Fatal("ErrorMessage should be empty initially")
 			}
 		})
 	}

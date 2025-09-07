@@ -437,10 +437,10 @@ func TestGenerateRequestInfos_EdgeCases(t *testing.T) {
 	t.Run("no arguments", func(t *testing.T) {
 		result := GenerateRequestInfos()
 		if result == nil {
-			t.Error("GenerateRequestInfos() should not return nil")
+			t.Fatal("GenerateRequestInfos() should not return nil")
 		}
 		if result.Headers != nil || result.Prompts != nil {
-			t.Error("GenerateRequestInfos() should return empty RequestInfos")
+			t.Fatal("GenerateRequestInfos() should return empty RequestInfos")
 		}
 	})
 
@@ -458,11 +458,11 @@ func TestGenerateRequestInfos_EdgeCases(t *testing.T) {
 
 		result := GenerateRequestInfos(funcs...)
 		if result == nil {
-			t.Error("GenerateRequestInfos() should not return nil")
+			t.Fatal("GenerateRequestInfos() should not return nil")
 		}
 		// Last header and prompt should be set
 		if result.Headers == nil || result.Prompts == nil {
-			t.Error("Headers and Prompts should be set")
+			t.Fatal("Headers and Prompts should be set")
 		}
 	})
 }
@@ -527,10 +527,12 @@ func TestGenerateRequestInfos_Concurrency(t *testing.T) {
 
 				result := GenerateRequestInfos(funcs...)
 				if result == nil {
-					t.Errorf("GenerateRequestInfos should not return nil")
+					t.Error("GenerateRequestInfos should not return nil")
+					return
 				}
 				if result.Headers == nil || result.Prompts == nil {
-					t.Errorf("Headers and Prompts should be set")
+					t.Error("Headers and Prompts should be set")
+					return
 				}
 			}
 		}(i)
@@ -556,18 +558,18 @@ func TestGenerateRequestInfos_StressTest(t *testing.T) {
 
 	result := GenerateRequestInfos(funcs...)
 	if result == nil {
-		t.Error("GenerateRequestInfos should not return nil")
+		t.Fatal("GenerateRequestInfos should not return nil")
 	}
 
 	// Verify that the last values are set correctly
 	expectedHeaderKey := fmt.Sprintf("Header-%d", numFunctions-2) // Last even index
 	if result.Headers == nil || result.Headers[expectedHeaderKey] == nil {
-		t.Error("Last header should be set")
+		t.Fatal("Last header should be set")
 	}
 
 	expectedPrompt := fmt.Sprintf("prompt-%d", numFunctions-1) // Last odd index
-	if result.Prompts == nil || len(result.Prompts) == 0 || result.Prompts[0] != expectedPrompt {
-		t.Error("Last prompt should be set")
+	if len(result.Prompts) == 0 || result.Prompts[0] != expectedPrompt {
+		t.Fatal("Last prompt should be set")
 	}
 }
 
