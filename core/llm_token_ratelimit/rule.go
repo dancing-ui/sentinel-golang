@@ -29,6 +29,9 @@ type Rule struct {
 }
 
 func (r *Rule) ResourceName() string {
+	if r == nil {
+		return "Rule{nil}"
+	}
 	return r.Resource
 }
 
@@ -68,6 +71,10 @@ func (r *Rule) String() string {
 }
 
 func (r *Rule) setDefaultRuleOption() {
+	if r == nil {
+		return
+	}
+
 	if len(r.Resource) == 0 {
 		r.Resource = DefaultResourcePattern
 	}
@@ -89,6 +96,10 @@ func (r *Rule) setDefaultRuleOption() {
 }
 
 func (r *Rule) filterDuplicatedItem() {
+	if r == nil {
+		return
+	}
+
 	occuredKeyItem := make(map[string]struct{})
 	var specificItems []*SpecificItem
 	for idx1 := len(r.SpecificItems) - 1; idx1 >= 0; idx1-- {
