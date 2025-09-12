@@ -135,6 +135,17 @@ func initCoreComponents() error {
 		return nil
 	}
 
+	if err := llmtokenratelimit.InitMetricLogger(&llmtokenratelimit.MetricLoggerConfig{
+		AppName:       config.AppName(),
+		LogDir:        config.LogBaseDir(),
+		MaxFileSize:   config.MetricLogSingleFileMaxSize(),
+		MaxFileAmount: config.MetricLogMaxFileAmount(),
+		FlushInterval: config.MetricLogFlushIntervalSec(),
+		UsePid:        config.LogUsePid(),
+	}); err != nil {
+		return err
+	}
+
 	if err := llmtokenratelimit.Init(config.LLMTokenRateLimit()); err != nil {
 		return err
 	}

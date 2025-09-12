@@ -13,4 +13,4 @@
 // limitations under the License.
 
 // Package config provides llm token rate limit mechanism.
-package llmtokenratelimit
+package llm_token_ratelimit

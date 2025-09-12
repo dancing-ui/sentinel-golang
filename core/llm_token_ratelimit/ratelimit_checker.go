@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 import (
 	_ "embed"
@@ -129,11 +129,6 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		return true
 	}
 
-	logging.Info("[LLMTokenRateLimit] check with PETA strategy",
-		"limitKey", rule.LimitKey,
-		"requestID", ctx.Get(KeyRequestID),
-	)
-
 	prompts := []string{}
 	reqInfos := extractRequestInfos(ctx)
 	if reqInfos != nil {
@@ -170,13 +165,17 @@ func (c *PETAChecker) checkLimitKey(ctx *Context, rule *MatchedRule) bool {
 		)
 		return true
 	}
-	logging.Info("[LLMTokenRateLimit] withhold completed",
-		"current_capacity", result[0],
-		"waiting_time(ms)", result[1],
-		"difference", result[3],
-		"tokenization_length", length,
-		"requestID", ctx.Get(KeyRequestID),
-	)
+
+	RecordMetric(MetricItem{
+		Timestamp:          util.CurrentTimeMillis(),
+		RequestID:          ctx.Get(KeyRequestID).(string),
+		LimitKey:           rule.LimitKey,
+		CurrentCapacity:    result[0],
+		WaitingTime:        result[1],
+		EstimatedToken:     result[2],
+		Difference:         result[3],
+		TokenizationLength: length,
+	})
 
 	// TODO: add waiting and timeout callback
 	waitingTime := result[1]

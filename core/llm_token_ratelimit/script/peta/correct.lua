@@ -90,7 +90,7 @@ if released_tokens > 0 then -- Expired tokens exist, attempt to replenish new to
 end
 -- Update the difference from the token encoder
 local difference = actual - estimated
-redis.call('SET', token_encoder_key, difference, 'PX', window_size + 5000)
+redis.call('SET', token_encoder_key, difference)
 -- Correction result for reservation
 local correct_result = 0
 if estimated < 0 or actual < 0 then

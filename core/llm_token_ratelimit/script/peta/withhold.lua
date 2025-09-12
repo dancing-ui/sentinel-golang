@@ -80,11 +80,11 @@ else
     if difference + estimated >= 0 then
         estimated = estimated + difference
     else
-        redis.call('SET', token_encoder_key, 0, 'PX', window_size + 5000)
+        redis.call('SET', token_encoder_key, 0)
     end
 end
 -- Check if the request can be satisfied
-if max_capacity < estimated or estimated < 0 then -- If max capacity is less than estimated consumption or estimated is less than 0, return -1 indicating rejection
+if max_capacity < estimated or estimated <= 0 then -- If max capacity is less than estimated consumption or estimated is less than or equal to 0, return -1 indicating rejection
     waiting_time = -1
 elseif current_capacity < estimated then -- If current capacity is insufficient to satisfy estimated consumption, calculate waiting time
     -- Get the earliest valid timestamp

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 import (
 	"testing"
@@ -305,8 +305,7 @@ func TestValidateToken(t *testing.T) {
 				Number:        0,
 				CountStrategy: TotalTokens,
 			},
-			wantError: true,
-			errorMsg:  "token number must be positive",
+			wantError: false,
 		},
 		{
 			name: "negative token number",
@@ -430,8 +429,7 @@ func TestValidateTime(t *testing.T) {
 				Unit:  Minute,
 				Value: 0,
 			},
-			wantError: true,
-			errorMsg:  "time value must be positive",
+			wantError: false,
 		},
 		{
 			name: "negative time value",
@@ -520,38 +518,6 @@ func TestValidateKeyItem(t *testing.T) {
 			},
 			wantError: true,
 			errorMsg:  "key pattern is not a valid regex",
-		},
-		{
-			name: "invalid token",
-			keyItem: &KeyItem{
-				Key: "user-*",
-				Token: Token{
-					Number:        0,
-					CountStrategy: TotalTokens,
-				},
-				Time: Time{
-					Unit:  Minute,
-					Value: 1,
-				},
-			},
-			wantError: true,
-			errorMsg:  "invalid token",
-		},
-		{
-			name: "invalid time",
-			keyItem: &KeyItem{
-				Key: "user-*",
-				Token: Token{
-					Number:        1000,
-					CountStrategy: TotalTokens,
-				},
-				Time: Time{
-					Unit:  Minute,
-					Value: 0,
-				},
-			},
-			wantError: true,
-			errorMsg:  "invalid time",
 		},
 	}
 

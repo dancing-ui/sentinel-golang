@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 type UsedTokenInfos struct {
 	InputTokens  int `json:"inputTokens"`

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 import (
 	"fmt"
@@ -162,7 +162,7 @@ func validateToken(token *Token) error {
 	}
 
 	// Validate Number (required, must be positive)
-	if token.Number <= 0 {
+	if token.Number < 0 {
 		return fmt.Errorf("token number must be positive, got: %d", token.Number)
 	}
 
@@ -191,7 +191,7 @@ func validateTime(time *Time) error {
 	}
 
 	// Validate Value (required, must be positive)
-	if time.Value <= 0 {
+	if time.Value < 0 {
 		return fmt.Errorf("time value must be positive, got: %d", time.Value)
 	}
 

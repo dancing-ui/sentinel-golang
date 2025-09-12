@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 import (
 	"fmt"
@@ -854,42 +854,6 @@ func TestFilterRules_EdgeCases(t *testing.T) {
 									Time: Time{
 										Unit:  Minute,
 										Value: 1,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: 0,
-		},
-		{
-			name: "rule with zero time value",
-			rules: []*Rule{
-				{
-					ID:       "zero-time-rule",
-					Resource: "test-resource",
-					Strategy: FixedWindow,
-					Encoding: TokenEncoding{
-						Provider: OpenAIEncoderProvider,
-						Model:    "gpt-3.5-turbo",
-					},
-					SpecificItems: []*SpecificItem{
-						{
-							Identifier: Identifier{
-								Type:  Header,
-								Value: "user-id",
-							},
-							KeyItems: []*KeyItem{
-								{
-									Key: "rate-limit",
-									Token: Token{
-										Number:        1000,
-										CountStrategy: TotalTokens,
-									},
-									Time: Time{
-										Unit:  Minute,
-										Value: 0, // Invalid: zero value
 									},
 								},
 							},

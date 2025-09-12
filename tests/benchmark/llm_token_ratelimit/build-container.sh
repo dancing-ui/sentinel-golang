@@ -14,7 +14,7 @@ if [[ ! -e "docker-compose-$mode.yml" ]]; then
 fi
 
 echo "Building application..."
-./build-code.sh
+./build-code.sh $mode
 
 echo "Building and starting containers..."
 docker-compose -f docker-compose-$mode.yml down

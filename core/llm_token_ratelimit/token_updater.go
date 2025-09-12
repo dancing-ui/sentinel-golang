@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package llmtokenratelimit
+package llm_token_ratelimit
 
 import (
 	_ "embed"
@@ -145,10 +145,11 @@ func (u *PETAUpdater) updateLimitKey(ctx *Context, rule *MatchedRule, infos *Use
 		return
 	}
 
-	logging.Info("[LLMTokenRateLimit] correct completed",
-		"estimated_token", rule.EstimatedToken,
-		"actual_token", actualToken,
-		"correct_result", correctResult,
-		"requestID", ctx.Get(KeyRequestID),
-	)
+	RecordMetric(MetricItem{
+		Timestamp:      util.CurrentTimeMillis(),
+		RequestID:      ctx.Get(KeyRequestID).(string),
+		EstimatedToken: rule.EstimatedToken,
+		ActualToken:    actualToken,
+		CorrectResult:  result[0],
+	})
 }
