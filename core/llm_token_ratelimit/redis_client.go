@@ -25,7 +25,7 @@ import (
 
 type SafeRedisClient struct {
 	mu     sync.RWMutex
-	client *redis.ClusterClient
+	client redis.UniversalClient
 }
 
 var globalRedisClient = NewGlobalRedisClient()
@@ -34,7 +34,7 @@ func NewGlobalRedisClient() *SafeRedisClient {
 	return &SafeRedisClient{}
 }
 
-func (c *SafeRedisClient) SetRedisClient(client *redis.ClusterClient) error {
+func (c *SafeRedisClient) SetRedisClient(client redis.UniversalClient) error {
 	if c == nil {
 		return fmt.Errorf("safe redis client is nil")
 	}
@@ -82,8 +82,8 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 	minIdleConns := cfg.MinIdleConns
 	maxRetries := cfg.MaxRetries
 
-	newClient := redis.NewClusterClient(
-		&redis.ClusterOptions{
+	newClient := redis.NewUniversalClient(
+		&redis.UniversalOptions{
 			Addrs: addrs,
 
 			Username: cfg.Username,
@@ -99,10 +99,6 @@ func (c *SafeRedisClient) Init(cfg *Redis) error {
 			MaxRetries:   int(maxRetries),
 		},
 	)
-
-	if newClient == nil {
-		return fmt.Errorf("new redis client is nil")
-	}
 
 	if _, err := newClient.Ping(context.TODO()).Result(); err != nil {
 		return fmt.Errorf("failed to connect to redis cluster: %v", err)
