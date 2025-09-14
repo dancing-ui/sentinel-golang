@@ -20,11 +20,15 @@ import (
 )
 
 type Rule struct {
+	// ID represents the unique ID of the rule (optional).
 	ID string `json:"id,omitempty" yaml:"id,omitempty"`
-
-	Resource      string          `json:"resource" yaml:"resource"`
-	Strategy      Strategy        `json:"strategy" yaml:"strategy"`
-	Encoding      TokenEncoding   `json:"encoding" yaml:"encoding"`
+	// Rule resource name, supporting regular expressions, Must be global match.
+	Resource string `json:"resource" yaml:"resource"`
+	// Rate limiting strategy.
+	Strategy Strategy `json:"strategy" yaml:"strategy"`
+	// Token encoding method, exclusively for peta rate limiting strategy
+	Encoding TokenEncoding `json:"encoding" yaml:"encoding"`
+	// Specific rule items
 	SpecificItems []*SpecificItem `json:"specificItems" yaml:"specificItems"`
 }
 
