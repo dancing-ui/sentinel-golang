@@ -178,6 +178,10 @@ sentinel:
       maxRetries: 3
 ```
 
+#### LLM Framework Adaptation
+Currently, it supports non-intrusive integration of Langchaingo and Eino frameworks into the Token rate limiting capability provided by Sentinel, which is mainly applicable to text generation scenarios. For usage details, refer to:
+- pkg/adapters/langchaingo/wrapper.go
+- pkg/adapters/eino/wrapper.go
 
 #### Notes
 

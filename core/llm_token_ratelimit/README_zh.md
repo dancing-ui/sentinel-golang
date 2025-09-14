@@ -176,6 +176,12 @@ sentinel:
       minIdleConns: 5
       maxRetries: 3
 ```
+#### LLM框架适配
+
+目前支持Langchaingo和Eino框架无侵入式接入Sentinel提供的Token限流能力，主要适用于文本生成方面，使用方法详见
+
+- pkg/adapters/langchaingo/wrapper.go
+- pkg/adapters/eino/wrapper.go
 
 #### 注意事项
 
