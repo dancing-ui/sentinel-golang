@@ -185,6 +185,7 @@ Currently, it supports non-intrusive integration of Langchaingo and Eino framewo
 
 #### Notes
 
+- Since only input tokens can be predicted at present, **it is recommended to use PETA for rate limiting specifically targeting input tokens**
 - PETA uses tiktoken to estimate input token consumption but requires downloading or preconfiguring the `Byte Pair Encoding (BPE)` dictionary
   - Online mode
     - tiktoken needs to download encoding files online for the first use

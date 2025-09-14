@@ -178,13 +178,14 @@ sentinel:
 ```
 #### LLM框架适配
 
-目前支持Langchaingo和Eino框架无侵入式接入Sentinel提供的Token限流能力，主要适用于文本生成方面，使用方法详见
+目前支持Langchaingo和Eino框架无侵入式接入Sentinel提供的Token限流能力，主要适用于文本生成方面，使用方法详见：
 
 - pkg/adapters/langchaingo/wrapper.go
 - pkg/adapters/eino/wrapper.go
 
 #### 注意事项
 
+- 由于目前仅可预知input tokens，所以**建议使用PETA专对于input tokens进行限流**
 - PETA使用tiktoken预估输入消耗token数，但是需要下载或预先配置`字节对编码(Byte Pair Encoding，BPE)`字典
   - 在线模式
     - 首次使用时，tiktoken需要联网下载编码文件
