@@ -258,7 +258,7 @@ func (ml *MetricLogger) Record(item MetricItem) {
 
 	ml.buffer = append(ml.buffer, item)
 
-	if len(ml.buffer) >= ml.bufferSize {
+	if len(ml.buffer) > ml.bufferSize {
 		ml.flushUnsafe()
 	}
 }
@@ -326,8 +326,9 @@ func (ml *MetricLogger) Stop() {
 	ml.mu.Lock()
 	defer ml.mu.Unlock()
 
+	ml.flushUnsafe()
+
 	if ml.writer != nil {
-		ml.writer.Flush()
 		ml.writer = nil
 	}
 

@@ -24,7 +24,7 @@ import (
 type BaseRuleCollector struct{}
 
 func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
-	if c == nil || rule == nil || rule.SpecificItems == nil {
+	if c == nil || rule == nil {
 		return nil
 	}
 
@@ -35,15 +35,16 @@ func (c *BaseRuleCollector) Collect(ctx *Context, rule *Rule) []*MatchedRule {
 
 	estimatedSize := 0
 	for _, item := range rule.SpecificItems {
-		if item.KeyItems != nil {
-			estimatedSize += len(item.KeyItems)
+		if item == nil || item.KeyItems == nil {
+			continue
 		}
+		estimatedSize += len(item.KeyItems)
 	}
 
 	ruleMap := make(map[string]*MatchedRule, estimatedSize)
 
 	for _, specificItem := range rule.SpecificItems {
-		if specificItem.KeyItems == nil {
+		if specificItem == nil || specificItem.KeyItems == nil {
 			continue
 		}
 

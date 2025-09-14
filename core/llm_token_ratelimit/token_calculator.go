@@ -68,5 +68,5 @@ func (c *TotalTokensCalculator) Calculate(ctx *Context, infos *UsedTokenInfos) i
 	if c == nil || infos == nil {
 		return 0
 	}
-	return infos.InputTokens + infos.OutputTokens
+	return infos.TotalTokens
 }

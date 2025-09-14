@@ -35,7 +35,6 @@ func (r *Rule) ResourceName() string {
 	return r.Resource
 }
 
-// TODO: update rule string and tests when rule changed
 func (r *Rule) String() string {
 	if r == nil {
 		return "Rule{nil}"
@@ -84,10 +83,16 @@ func (r *Rule) setDefaultRuleOption() {
 	}
 
 	for idx1, specificItem := range r.SpecificItems {
+		if specificItem == nil {
+			continue
+		}
 		if len(specificItem.Identifier.Value) == 0 {
 			r.SpecificItems[idx1].Identifier.Value = DefaultIdentifierValuePattern
 		}
 		for idx2, keyItem := range specificItem.KeyItems {
+			if keyItem == nil {
+				continue
+			}
 			if len(keyItem.Key) == 0 {
 				r.SpecificItems[idx1].KeyItems[idx2].Key = DefaultKeyPattern
 			}
@@ -103,8 +108,14 @@ func (r *Rule) filterDuplicatedItem() {
 	occuredKeyItem := make(map[string]struct{})
 	var specificItems []*SpecificItem
 	for idx1 := len(r.SpecificItems) - 1; idx1 >= 0; idx1-- {
+		if r.SpecificItems[idx1] == nil {
+			continue
+		}
 		var keyItems []*KeyItem
 		for idx2 := len(r.SpecificItems[idx1].KeyItems) - 1; idx2 >= 0; idx2-- {
+			if r.SpecificItems[idx1].KeyItems[idx2] == nil {
+				continue
+			}
 			hash := generateHash(
 				r.SpecificItems[idx1].Identifier.String(),
 				r.SpecificItems[idx1].KeyItems[idx2].Key,
