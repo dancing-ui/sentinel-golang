@@ -41,7 +41,7 @@ func NewTokenEncoder(ctx *Context, encoding TokenEncoding) TokenEncoder {
 		encoder = NewOpenAIEncoder(ctx, encoding)
 	default:
 		logging.Warn("[LLMTokenRateLimit] unsupported token encoder provider, falling back to OpenAIEncoder",
-			"unsupported encoder prodier", encoding.Provider,
+			"unsupported encoder provider", encoding.Provider,
 			"requestID", ctx.Get(KeyRequestID),
 		)
 		encoder = NewOpenAIEncoder(ctx, encoding) // Fallback to OpenAIEncoder for unsupported providers

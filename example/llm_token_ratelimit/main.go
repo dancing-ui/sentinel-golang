@@ -29,7 +29,7 @@ func StartMonitor() {
 	fmt.Println(http.ListenAndServe("127.0.0.1:6060", nil))
 }
 
-func StartSerivce() {
+func StartService() {
 	gin.SetMode(gin.ReleaseMode)
 	ratelimit.InitSentinel()
 	server.StartServer("127.0.0.1", 9527)
@@ -37,5 +37,5 @@ func StartSerivce() {
 
 func main() {
 	go StartMonitor()
-	StartSerivce()
+	StartService()
 }

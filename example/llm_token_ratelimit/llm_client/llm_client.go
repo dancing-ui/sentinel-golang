@@ -77,7 +77,7 @@ func (p LLMProvider) MarshalJSON() ([]byte, error) {
 }
 
 func (p *LLMProvider) UnmarshalJSON(data []byte) error {
-	// 去除引号
+	// Remove quotes
 	s := string(data)
 	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
 		s = s[1 : len(s)-1]
