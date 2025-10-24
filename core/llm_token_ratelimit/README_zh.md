@@ -45,19 +45,42 @@
    
 5. 可选：创建LLM实例嵌入到提供的适配器中即可
 
-#### 配置文件描述
+#### 配置描述
 
-总体规则配置
+##### 配置文件
 
-| 配置项       | 类型                 | 必填 | 默认值              | 说明                                                       |
-| :----------- | :------------------- | :--- | :------------------ | :--------------------------------------------------------- |
-| enabled      | bool                 | 否   | false               | 是否启用LLM Token限流功能，取值：false(不启用)、true(启用) |
-| rules        | array of rule object | 否   | nil                 | 限流规则                                                   |
-| redis        | object               | 否   |                     | redis实例连接信息                                          |
-| errorCode    | int                  | 否   | 429                 | 错误码，设置为0时会修改为429                               |
-| errorMessage | string               | 否   | "Too Many Requests" | 错误信息                                                   |
+| 配置项       | 类型   | 必填 | 默认值              | 说明                                                       |
+| :----------- | :----- | :--- | :------------------ | :--------------------------------------------------------- |
+| enabled      | bool   | 否   | false               | 是否启用LLM Token限流功能，取值：false(不启用)、true(启用) |
+| redis        | object | 否   |                     | redis实例连接信息                                          |
+| errorCode    | int    | 否   | 429                 | 错误码，设置为0时会修改为429                               |
+| errorMessage | string | 否   | "Too Many Requests" | 错误信息                                                   |
 
-rule配置
+redis配置
+
+| 配置项       | 类型                 | 必填 | 默认值                            | 说明                                               |
+| :----------- | :------------------- | :--- | :-------------------------------- | :------------------------------------------------- |
+| addrs        | array of addr object | 否   | [{name: "127.0.0.1", port: 6379}] | redis节点服务，**见注意事项说明**                  |
+| username     | string               | 否   | 空字符串                          | redis用户名                                        |
+| password     | string               | 否   | 空字符串                          | redis密码                                          |
+| dialTimeout  | int                  | 否   | 0                                 | 建立redis连接的最长等待时间，单位：毫秒            |
+| readTimeout  | int                  | 否   | 0                                 | 等待Redis服务器响应的最长时间，单位：毫秒          |
+| writeTimeout | int                  | 否   | 0                                 | 向网络连接发送命令数据的最长时间，单位：毫秒       |
+| poolTimeout  | int                  | 否   | 0                                 | 从连接池获取一个空闲连接的最大等待时间，单位：毫秒 |
+| poolSize     | int                  | 否   | 10                                | 连接池中的连接数量                                 |
+| minIdleConns | int                  | 否   | 5                                 | 连接池闲置连接的最少数量                           |
+| maxRetries   | int                  | 否   | 3                                 | 操作失败，最大尝试次数                             |
+
+addr配置
+
+| 配置项 | 类型   | 必填 | 默认值      | 说明                                                         |
+| :----- | :----- | :--- | :---------- | :----------------------------------------------------------- |
+| name   | string | 否   | "127.0.0.1" | redis节点服务名称，带服务类型的完整 [FQDN](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) 名称，例如 my-redis.dns、redis.my-ns.svc.cluster.local |
+| port   | int    | 否   | 6379        | redis节点服务端口                                            |
+
+##### 规则配置
+
+**特点：支持LoadRules动态加载**
 
 | 配置项        | 类型                         | 必填 | 默认值         | 说明                                                         |
 | :------------ | :--------------------------- | :--- | :------------- | :----------------------------------------------------------- |
@@ -109,29 +132,7 @@ time配置
 | unit   | string | 是   |        | 时间单位，取值：second、minute、hour、day |
 | value  | int    | 是   |        | 时间值，大于等于0                         |
 
-redis配置
-
-| 配置项       | 类型                 | 必填 | 默认值                            | 说明                                               |
-| :----------- | :------------------- | :--- | :-------------------------------- | :------------------------------------------------- |
-| addrs        | array of addr object | 否   | [{name: "127.0.0.1", port: 6379}] | redis节点服务，**见注意事项说明**                  |
-| username     | string               | 否   | 空字符串                          | redis用户名                                        |
-| password     | string               | 否   | 空字符串                          | redis密码                                          |
-| dialTimeout  | int                  | 否   | 0                                 | 建立redis连接的最长等待时间，单位：毫秒            |
-| readTimeout  | int                  | 否   | 0                                 | 等待Redis服务器响应的最长时间，单位：毫秒          |
-| writeTimeout | int                  | 否   | 0                                 | 向网络连接发送命令数据的最长时间，单位：毫秒       |
-| poolTimeout  | int                  | 否   | 0                                 | 从连接池获取一个空闲连接的最大等待时间，单位：毫秒 |
-| poolSize     | int                  | 否   | 10                                | 连接池中的连接数量                                 |
-| minIdleConns | int                  | 否   | 5                                 | 连接池闲置连接的最少数量                           |
-| maxRetries   | int                  | 否   | 3                                 | 操作失败，最大尝试次数                             |
-
-addr配置
-
-| 配置项 | 类型   | 必填 | 默认值      | 说明                                                         |
-| :----- | :----- | :--- | :---------- | :----------------------------------------------------------- |
-| name   | string | 否   | "127.0.0.1" | redis节点服务名称，带服务类型的完整 [FQDN](https://en.wikipedia.org/wiki/Fully_qualified_domain_name) 名称，例如 my-redis.dns、redis.my-ns.svc.cluster.local |
-| port   | int    | 否   | 6379        | redis节点服务端口                                            |
-
-#### 总体配置文件示例
+#### 配置文件示例
 
 ```YAML
 version: "v1"
@@ -142,23 +143,8 @@ sentinel:
     metric:
       maxFileCount: 7
   llmTokenRatelimit:
-  	enabled: true,
-    rules:
-      - resource: ".*"
-        strategy: "fixed-window"
-        specificItems:
-          - identifier:
-              type: "header"
-              value: ".*"
-            keyItems:
-              - key: ".*"
-                token: 
-                  number: 1000
-                  countStrategy: "total-tokens"
-                time:
-                  unit: "second"
-                  value: 60
-
+  	enabled: true
+  	
     errorCode: 429
     errorMessage: "Too Many Requests"
     
@@ -186,11 +172,11 @@ sentinel:
 #### 注意事项
 
 - 由于目前仅可预知input tokens，所以**建议使用PETA专对于input tokens进行限流**
-- PETA使用tiktoken预估输入消耗token数，但是需要下载或预先配置`字节对编码(Byte Pair Encoding，BPE)`字典
+- PETA使用tiktoken-go预估输入消耗token数，但是需要下载或预先配置`字节对编码(Byte Pair Encoding，BPE)`字典
   - 在线模式
-    - 首次使用时，tiktoken需要联网下载编码文件
+    - 首次使用时，tiktoken-go需要联网下载编码文件
   - 离线模式
-    - 预先准备缓存好的tiktoken的编码文件（**非直接下载文件，而是经过tiktoken处理后的文件**），并通过配置TIKTOKEN_CACHE_DIR环境变量指定文件目录位置
+    - 预先准备缓存好的tiktoken-go的编码文件（**非直接下载文件，而是经过tiktoken-go处理后的文件**），并通过配置TIKTOKEN_CACHE_DIR环境变量指定文件目录位置
 - 规则去重说明
   - keyItems中，若仅number不同，会去重保留最新的number
   - specificItems中，仅保留去重后的keyItems

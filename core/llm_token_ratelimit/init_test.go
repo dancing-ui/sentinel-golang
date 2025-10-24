@@ -35,12 +35,6 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 	configs := make([]*Config, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		configs[i] = &Config{
-			Rules: []*Rule{
-				{
-					ID:       fmt.Sprintf("rule-%d", i),
-					Resource: fmt.Sprintf("/api/test-%d", i),
-				},
-			},
 			Redis: &Redis{
 				Addrs: []*RedisAddr{
 					{Name: fmt.Sprintf("redis-%d", i), Port: int32(6379 + i)},
@@ -77,9 +71,6 @@ func TestSafeConfig_ConcurrentSetGet(t *testing.T) {
 				cfg := config.GetConfig()
 				// Basic validation - should not panic or return corrupted data
 				if cfg != nil {
-					if len(cfg.Rules) > 0 {
-						_ = cfg.Rules[0].ID // Access should not cause data race
-					}
 					if cfg.Redis != nil {
 						_ = cfg.Redis.Addrs // Access should not cause data race
 					}
@@ -168,25 +159,6 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 	configs := make([]*Config, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		configs[i] = &Config{
-			Rules: []*Rule{
-				{
-					ID:       fmt.Sprintf("concurrent-rule-%d", i),
-					Resource: fmt.Sprintf("/api/concurrent-%d", i),
-					Strategy: FixedWindow,
-					SpecificItems: []*SpecificItem{
-						{
-							Identifier: Identifier{Type: Header, Value: "*"},
-							KeyItems: []*KeyItem{
-								{
-									Key:   "*",
-									Token: Token{Number: int64(1000 + i), CountStrategy: TotalTokens},
-									Time:  Time{Unit: Second, Value: 60},
-								},
-							},
-						},
-					},
-				},
-			},
 			Redis: &Redis{
 				Addrs: []*RedisAddr{
 					{Name: "localhost", Port: 6379},
@@ -224,9 +196,6 @@ func TestInit_ConcurrentSafety(t *testing.T) {
 				// Basic validation
 				_ = cfg.ErrorCode
 				_ = cfg.ErrorMessage
-				if len(cfg.Rules) > 0 {
-					_ = cfg.Rules[0].ID
-				}
 			}
 		}(i)
 	}
@@ -263,23 +232,14 @@ func TestSafeConfig_DataIntegrity(t *testing.T) {
 		{
 			ErrorCode:    100,
 			ErrorMessage: "config-100",
-			Rules: []*Rule{
-				{ID: "rule-100"},
-			},
 		},
 		{
 			ErrorCode:    200,
 			ErrorMessage: "config-200",
-			Rules: []*Rule{
-				{ID: "rule-200"},
-			},
 		},
 		{
 			ErrorCode:    300,
 			ErrorMessage: "config-300",
-			Rules: []*Rule{
-				{ID: "rule-300"},
-			},
 		},
 	}
 
@@ -316,16 +276,6 @@ func TestSafeConfig_DataIntegrity(t *testing.T) {
 							readerID, cfg.ErrorCode, cfg.ErrorMessage)
 						return
 					}
-
-					// Validate rules consistency
-					if len(cfg.Rules) > 0 {
-						expectedRuleID := fmt.Sprintf("rule-%d", cfg.ErrorCode)
-						if cfg.Rules[0].ID != expectedRuleID {
-							errors <- fmt.Errorf("rule data corruption detected by reader %d: ErrorCode=%d, RuleID=%s",
-								readerID, cfg.ErrorCode, cfg.Rules[0].ID)
-							return
-						}
-					}
 				}
 			}
 		}(i)
@@ -360,12 +310,6 @@ func BenchmarkSafeConfig_ConcurrentSetGet(b *testing.B) {
 	testConfig := &Config{
 		ErrorCode:    500,
 		ErrorMessage: "benchmark config",
-		Rules: []*Rule{
-			{
-				ID:       "benchmark-rule",
-				Resource: "/api/benchmark",
-			},
-		},
 	}
 
 	// Pre-set a config
@@ -433,12 +377,6 @@ func TestGlobalConfig_ConcurrentAccess(t *testing.T) {
 	testConfig := &Config{
 		ErrorCode:    999,
 		ErrorMessage: "global test config",
-		Rules: []*Rule{
-			{
-				ID:       "global-rule",
-				Resource: "/api/global",
-			},
-		},
 	}
 
 	// Concurrent access to global config

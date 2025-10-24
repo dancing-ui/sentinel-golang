@@ -421,29 +421,6 @@ func TestSpecificItem_String(t *testing.T) {
 
 func TestCompleteYAMLUnmarshaling(t *testing.T) {
 	yamlData := `
-rules:
-  - id: "rule1"
-    resource: "/api/chat"
-    strategy: fixed-window
-    specificItems:
-      - identifier:
-          type: header
-          value: "user-id"
-        keyItems:
-          - key: "hourly-limit"
-            token:
-              number: 1000
-              countStrategy: total-tokens
-            time:
-              value: 1
-              unit: hour
-          - key: "daily-limit"
-            token:
-              number: 10000
-              countStrategy: input-tokens
-            time:
-              value: 1
-              unit: day
 redis:
   addrs:
     - name: "localhost"
@@ -464,33 +441,6 @@ errorMessage: "Rate limit exceeded"
 		t.Fatalf("Failed to unmarshal YAML: %v", err)
 	}
 
-	// Validate basic structure
-	if len(config.Rules) != 1 {
-		t.Errorf("Expected 1 rule, got %d", len(config.Rules))
-	}
-
-	rule := config.Rules[0]
-	if rule.ID != "rule1" {
-		t.Errorf("Expected rule ID 'rule1', got %q", rule.ID)
-	}
-
-	if rule.Strategy != FixedWindow {
-		t.Errorf("Expected FixedWindow strategy, got %v", rule.Strategy)
-	}
-
-	if len(rule.SpecificItems) != 1 {
-		t.Errorf("Expected 1 rule item, got %d", len(rule.SpecificItems))
-	}
-
-	specificItem := rule.SpecificItems[0]
-	if specificItem.Identifier.Type != Header {
-		t.Errorf("Expected Header identifier type, got %v", specificItem.Identifier.Type)
-	}
-
-	if len(specificItem.KeyItems) != 2 {
-		t.Errorf("Expected 2 key items, got %d", len(specificItem.KeyItems))
-	}
-
 	// Test Redis config
 	if config.Redis.Addrs[0].Name != "localhost" {
 		t.Errorf("Expected Redis addr name 'localhost', got %q", config.Redis.Addrs[0].Name)
@@ -503,67 +453,6 @@ errorMessage: "Rate limit exceeded"
 	// Test error config
 	if config.ErrorCode != 429 {
 		t.Errorf("Expected error code 429, got %d", config.ErrorCode)
-	}
-}
-
-func TestYAMLUnmarshalingErrors(t *testing.T) {
-	tests := []struct {
-		name     string
-		yamlData string
-		wantErr  bool
-	}{
-		{
-			"invalid identifier type",
-			`
-rules:
-  - specificItems:
-      - identifier:
-          type: invalid
-`,
-			true,
-		},
-		{
-			"invalid count strategy",
-			`
-rules:
-  - specificItems:
-      - keyItems:
-          - token:
-              countStrategy: invalid-strategy
-`,
-			true,
-		},
-		{
-			"invalid time unit",
-			`
-rules:
-  - specificItems:
-      - keyItems:
-          - time:
-              unit: invalid-unit
-`,
-			true,
-		},
-		{
-			"invalid strategy",
-			`
-rules:
-  - strategy: invalid-strategy
-`,
-			true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var config Config
-			err := yaml.Unmarshal([]byte(tt.yamlData), &config)
-			if tt.wantErr && err == nil {
-				t.Error("Expected error but got none")
-			} else if !tt.wantErr && err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
-		})
 	}
 }
 

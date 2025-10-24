@@ -13,4 +13,17 @@
 // limitations under the License.
 
 // Package config provides llm token rate limit mechanism.
+//
+// This package implements two core rate limiting strategies:
+//  1. Fixed Window: A time-window based token limiting strategy.
+//  2. PETA (Predictive Error Temporal Amortized): A predictive input tokens limiting strategy.
+//
+// Key features include:
+//  1. Token-based rate limiting for LLM API calls.
+//  2. Support for multiple token counting strategies.
+//  3. Redis-backed distributed rate limiting to ensure consistency across clusters.
+//  4. Token encoding support for estimating token usage of input content.
+//  5. Adapters for seamless integration with common LLM frameworks.
+//
+// This functionality enables fine-grained control over LLM API usage based on token consumption, suitable for managing access to large language models with strict token limits.
 package llm_token_ratelimit

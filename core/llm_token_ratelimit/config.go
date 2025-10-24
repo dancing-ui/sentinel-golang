@@ -112,11 +112,10 @@ type Redis struct {
 }
 
 type Config struct {
-	Enabled      bool    `json:"enabled" yaml:"enabled"`
-	Rules        []*Rule `json:"rules" yaml:"rules"`
-	Redis        *Redis  `json:"redis" yaml:"redis"`
-	ErrorCode    int32   `json:"errorCode" yaml:"errorCode"`
-	ErrorMessage string  `json:"errorMessage" yaml:"errorMessage"`
+	Enabled      bool   `json:"enabled" yaml:"enabled"`
+	Redis        *Redis `json:"redis" yaml:"redis"`
+	ErrorCode    int32  `json:"errorCode" yaml:"errorCode"`
+	ErrorMessage string `json:"errorMessage" yaml:"errorMessage"`
 }
 
 func NewDefaultRedisConfig() *Redis {
@@ -140,7 +139,6 @@ func NewDefaultRedisConfig() *Redis {
 func NewDefaultConfig() *Config {
 	return &Config{
 		Enabled:      false,
-		Rules:        nil,
 		Redis:        nil,
 		ErrorCode:    DefaultErrorCode,
 		ErrorMessage: DefaultErrorMessage,

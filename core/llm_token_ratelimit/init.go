@@ -54,8 +54,5 @@ func Init(cfg *Config) error {
 	if err := globalRedisClient.Init(cfg.Redis); err != nil {
 		return err
 	}
-	if _, err := LoadRules(cfg.Rules); err != nil {
-		return err
-	}
 	return nil
 }
