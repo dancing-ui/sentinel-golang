@@ -15,6 +15,7 @@
 package llm_token_ratelimit
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -271,12 +272,12 @@ func (c *SafeConfig) GetErrorMsg() string {
 	return c.config.ErrorMessage
 }
 
-func (p *TokenEncoderProvider) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (p *TokenEncoderProvider) UnmarshalJSON(data []byte) error {
 	if p == nil {
 		return fmt.Errorf("token encoder provider is nil")
 	}
 	var str string
-	if err := unmarshal(&str); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	switch str {
@@ -288,12 +289,12 @@ func (p *TokenEncoderProvider) UnmarshalYAML(unmarshal func(interface{}) error) 
 	return nil
 }
 
-func (it *IdentifierType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (it *IdentifierType) UnmarshalJSON(data []byte) error {
 	if it == nil {
 		return fmt.Errorf("identifier type is nil")
 	}
 	var str string
-	if err := unmarshal(&str); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	switch str {
@@ -307,12 +308,12 @@ func (it *IdentifierType) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return nil
 }
 
-func (ct *CountStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (ct *CountStrategy) UnmarshalJSON(data []byte) error {
 	if ct == nil {
 		return fmt.Errorf("count strategy is nil")
 	}
 	var str string
-	if err := unmarshal(&str); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	switch str {
@@ -328,12 +329,12 @@ func (ct *CountStrategy) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return nil
 }
 
-func (tu *TimeUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (tu *TimeUnit) UnmarshalJSON(data []byte) error {
 	if tu == nil {
 		return fmt.Errorf("time unit is nil")
 	}
 	var str string
-	if err := unmarshal(&str); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	switch str {
@@ -351,12 +352,12 @@ func (tu *TimeUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (s *Strategy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *Strategy) UnmarshalJSON(data []byte) error {
 	if s == nil {
 		return fmt.Errorf("strategy is nil")
 	}
 	var str string
-	if err := unmarshal(&str); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return err
 	}
 	switch str {

@@ -15,32 +15,72 @@
 package llm_token_ratelimit
 
 import (
+	"encoding/json"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 )
 
-func TestIdentifierType_UnmarshalYAML(t *testing.T) {
+func TestTokenEncoderProvider_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		yamlData string
-		expected IdentifierType
+		jsonData string
+		expected TokenEncoderProvider
 		wantErr  bool
 	}{
-		{"all identifier", `type: all`, AllIdentifier, false},
-		{"header identifier", `type: header`, Header, false},
-		{"unknown identifier", `type: unknown`, AllIdentifier, true},
-		{"empty identifier", `type: ""`, AllIdentifier, true},
-		{"number as identifier", `type: 123`, AllIdentifier, true},
+		{"openai provider", `{"provider": "openai"}`, OpenAIEncoderProvider, false},
+		{"unknown provider", `{"provider": "unknown"}`, OpenAIEncoderProvider, true},
+		{"empty provider", `{"provider": ""}`, OpenAIEncoderProvider, true},
+		{"number as provider", `{"provider": 0}`, OpenAIEncoderProvider, true},
+		{"invalid number", `{"provider": 999}`, OpenAIEncoderProvider, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var data struct {
-				Type IdentifierType `yaml:"type"`
+				Provider TokenEncoderProvider `json:"provider"`
 			}
 
-			err := yaml.Unmarshal([]byte(tt.yamlData), &data)
+			err := json.Unmarshal([]byte(tt.jsonData), &data)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if data.Provider != tt.expected {
+					t.Errorf("Expected %v, got %v", tt.expected, data.Provider)
+				}
+			}
+		})
+	}
+}
+
+func TestIdentifierType_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		jsonData string
+		expected IdentifierType
+		wantErr  bool
+	}{
+		{"all identifier", `{"type": "all"}`, AllIdentifier, false},
+		{"header identifier", `{"type": "header"}`, Header, false},
+		{"unknown identifier", `{"type": "unknown"}`, AllIdentifier, true},
+		{"empty identifier", `{"type": ""}`, AllIdentifier, true},
+		{"number as identifier - 0", `{"type": 0}`, AllIdentifier, true},
+		{"number as identifier - 1", `{"type": 1}`, Header, true},
+		{"invalid number", `{"type": 999}`, AllIdentifier, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data struct {
+				Type IdentifierType `json:"type"`
+			}
+
+			err := json.Unmarshal([]byte(tt.jsonData), &data)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -57,27 +97,30 @@ func TestIdentifierType_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-func TestCountStrategy_UnmarshalYAML(t *testing.T) {
+func TestCountStrategy_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		yamlData string
+		jsonData string
 		expected CountStrategy
 		wantErr  bool
 	}{
-		{"total tokens", `strategy: total-tokens`, TotalTokens, false},
-		{"input tokens", `strategy: input-tokens`, InputTokens, false},
-		{"output tokens", `strategy: output-tokens`, OutputTokens, false},
-		{"unknown strategy", `strategy: unknown-tokens`, TotalTokens, true},
-		{"empty strategy", `strategy: ""`, TotalTokens, true},
+		{"total tokens", `{"strategy": "total-tokens"}`, TotalTokens, false},
+		{"input tokens", `{"strategy": "input-tokens"}`, InputTokens, false},
+		{"output tokens", `{"strategy": "output-tokens"}`, OutputTokens, false},
+		{"unknown strategy", `{"strategy": "unknown-tokens"}`, TotalTokens, true},
+		{"empty strategy", `{"strategy": ""}`, TotalTokens, true},
+		{"number as strategy - 0", `{"strategy": 0}`, TotalTokens, true},
+		{"number as strategy - 1", `{"strategy": 1}`, InputTokens, true},
+		{"number as strategy - 2", `{"strategy": 2}`, OutputTokens, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var data struct {
-				Strategy CountStrategy `yaml:"strategy"`
+				Strategy CountStrategy `json:"strategy"`
 			}
 
-			err := yaml.Unmarshal([]byte(tt.yamlData), &data)
+			err := json.Unmarshal([]byte(tt.jsonData), &data)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -94,28 +137,32 @@ func TestCountStrategy_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-func TestTimeUnit_UnmarshalYAML(t *testing.T) {
+func TestTimeUnit_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		yamlData string
+		jsonData string
 		expected TimeUnit
 		wantErr  bool
 	}{
-		{"second unit", `unit: second`, Second, false},
-		{"minute unit", `unit: minute`, Minute, false},
-		{"hour unit", `unit: hour`, Hour, false},
-		{"day unit", `unit: day`, Day, false},
-		{"unknown unit", `unit: week`, Second, true},
-		{"empty unit", `unit: ""`, Second, true},
+		{"second unit", `{"unit": "second"}`, Second, false},
+		{"minute unit", `{"unit": "minute"}`, Minute, false},
+		{"hour unit", `{"unit": "hour"}`, Hour, false},
+		{"day unit", `{"unit": "day"}`, Day, false},
+		{"unknown unit", `{"unit": "week"}`, Second, true},
+		{"empty unit", `{"unit": ""}`, Second, true},
+		{"number as unit - 0", `{"unit": 0}`, Second, true},
+		{"number as unit - 1", `{"unit": 1}`, Minute, true},
+		{"number as unit - 2", `{"unit": 2}`, Hour, true},
+		{"number as unit - 3", `{"unit": 3}`, Day, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var data struct {
-				Unit TimeUnit `yaml:"unit"`
+				Unit TimeUnit `json:"unit"`
 			}
 
-			err := yaml.Unmarshal([]byte(tt.yamlData), &data)
+			err := json.Unmarshal([]byte(tt.jsonData), &data)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -132,25 +179,28 @@ func TestTimeUnit_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-func TestStrategy_UnmarshalYAML(t *testing.T) {
+func TestStrategy_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		yamlData string
+		jsonData string
 		expected Strategy
 		wantErr  bool
 	}{
-		{"fixed window", `strategy: fixed-window`, FixedWindow, false},
-		{"unknown strategy", `strategy: sliding-window`, FixedWindow, true},
-		{"empty strategy", `strategy: ""`, FixedWindow, true},
+		{"fixed window", `{"strategy": "fixed-window"}`, FixedWindow, false},
+		{"peta strategy", `{"strategy": "peta"}`, PETA, false},
+		{"unknown strategy", `{"strategy": "sliding-window"}`, FixedWindow, true},
+		{"empty strategy", `{"strategy": ""}`, FixedWindow, true},
+		{"number as strategy - 0", `{"strategy": 0}`, FixedWindow, true},
+		{"number as strategy - 1", `{"strategy": 1}`, PETA, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var data struct {
-				Strategy Strategy `yaml:"strategy"`
+				Strategy Strategy `json:"strategy"`
 			}
 
-			err := yaml.Unmarshal([]byte(tt.yamlData), &data)
+			err := json.Unmarshal([]byte(tt.jsonData), &data)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none")
